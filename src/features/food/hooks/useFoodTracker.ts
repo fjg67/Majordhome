@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@services/supabase';
-import { scheduleExpiryNotification, cancelNotification } from '@services/notifications';
+import { notificationService } from '@services/notifications';
 import type { FoodItem, ExpiryStatus } from '@appTypes/index';
 
 export const getExpiryStatus = (expiryDate: string): ExpiryStatus => {
@@ -62,8 +62,13 @@ export const useFoodTracker = ({ householdId }: UseFoodTrackerOptions) => {
         .single();
       if (error) throw error;
       const food = data as FoodItem;
-      // Planifier notification DLC
-      await scheduleExpiryNotification(food.name, new Date(food.expiry_date), food.id);
+      // Planifier notification DLC via le nouveau service
+      await notificationService.scheduleFoodExpiryReminder({
+        id: food.id,
+        name: food.name,
+        expiry_date: food.expiry_date,
+        quantity: food.quantity ?? '',
+      });
       return food;
     },
     onSettled: () => {
@@ -78,7 +83,7 @@ export const useFoodTracker = ({ householdId }: UseFoodTrackerOptions) => {
         .update({ consumed_at: new Date().toISOString() })
         .eq('id', foodId);
       if (error) throw error;
-      await cancelNotification(`food-expiry-${foodId}`);
+      await notificationService.cancelFoodReminders(foodId);
     },
     onMutate: async (foodId) => {
       await queryClient.cancelQueries({ queryKey: ['food', householdId] });

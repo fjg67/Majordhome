@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import Animated, {
   FadeInDown,
@@ -16,13 +18,46 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withRepeat,
+  withTiming,
+  withDelay,
+  interpolateColor,
+  interpolate,
+  Easing,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
-import { useTheme } from '@shared/hooks/useTheme';
 import { MEMBER_COLORS } from '@shared/theme/colors';
 import { useAuthStore } from '../store/authStore';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '@app/navigation/types';
+
+const { width: SW, height: SH } = Dimensions.get('window');
+
+// ═══════════════════════════════════════════════════════════
+// PALETTE — Dark Amber Premium
+// ═══════════════════════════════════════════════════════════
+const C = {
+  bgDeep:      '#1A0E00',
+  bgMid:       '#261400',
+  bgSurface:   '#2E1A00',
+
+  amber:       '#F5A623',
+  amberWarm:   '#E8920A',
+  amberSoft:   'rgba(245,166,35,0.15)',
+  amberGlow:   'rgba(245,166,35,0.30)',
+  amberBorder: 'rgba(245,166,35,0.22)',
+
+  textPrimary:   '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.58)',
+  textMuted:     'rgba(255,255,255,0.32)',
+
+  inputBg:       'rgba(255,255,255,0.06)',
+  inputBorder:   'rgba(255,255,255,0.12)',
+  inputFocus:    'rgba(245,166,35,0.45)',
+
+  cardBg:     'rgba(46,26,0,0.65)',
+  cardBorder: 'rgba(245,166,35,0.12)',
+};
 
 const AVATAR_EMOJIS = [
   '\u{1F60A}', '\u{1F60E}', '\u{1F913}', '\u{1F98A}', '\u{1F431}', '\u{1F436}', '\u{1F981}', '\u{1F43C}',
@@ -30,121 +65,136 @@ const AVATAR_EMOJIS = [
   '\u{1F680}', '\u{26A1}', '\u{1F3AE}', '\u{1F3E0}', '\u{1F33B}', '\u{1F98B}', '\u{1F340}', '\u{2728}',
 ];
 
-interface FamilyMember {
-  name: string;
-  color: string;
-  emoji: string;
-}
-
 interface MemberProfileScreenProps {
   navigation: StackNavigationProp<RootStackParamList, 'MemberProfile'>;
 }
 
-// ─── Mini color/emoji picker for family members ──────────
-const MiniPicker: React.FC<{
-  member: FamilyMember;
-  index: number;
-  onUpdate: (index: number, data: Partial<FamilyMember>) => void;
-  onRemove: (index: number) => void;
-  theme: any;
-  isDark: boolean;
-}> = ({ member, index, onUpdate, onRemove, theme, isDark }) => (
-  <Animated.View entering={FadeIn.duration(300)} style={[styles.familyCard, {
-    backgroundColor: theme.colors.cardBg,
-    borderColor: member.color + '40',
-  }]}>
-    <View style={styles.familyCardHeader}>
-      <View style={[styles.familyAvatarSmall, { backgroundColor: member.color + '20', borderColor: member.color }]}>
-        <Text style={{ fontSize: 20 }}>{member.emoji}</Text>
-      </View>
-      <TextInput
-        style={[styles.familyNameInput, { color: theme.colors.text, borderColor: theme.colors.inputBorder, backgroundColor: theme.colors.inputBg }]}
-        placeholder="Prénom..."
-        placeholderTextColor={theme.colors.textMuted}
-        value={member.name}
-        onChangeText={(t) => onUpdate(index, { name: t })}
-        maxLength={20}
-      />
-      <Pressable onPress={() => onRemove(index)} hitSlop={8}>
-        <Text style={{ fontSize: 20, color: theme.colors.textMuted }}>{'\u2715'}</Text>
-      </Pressable>
-    </View>
-    <View style={styles.familyColorRow}>
-      {MEMBER_COLORS.map((c) => (
-        <Pressable key={c} onPress={() => onUpdate(index, { color: c })}>
-          <View style={[styles.familyColorDot, { backgroundColor: c },
-            member.color === c && { borderColor: isDark ? '#FFF' : '#000', borderWidth: 2, transform: [{ scale: 1.2 }] },
-          ]} />
-        </Pressable>
-      ))}
-    </View>
-    <View style={styles.familyEmojiRow}>
-      {AVATAR_EMOJIS.slice(0, 12).map((e) => (
-        <Pressable key={e} onPress={() => onUpdate(index, { emoji: e })}>
-          <View style={[styles.familyEmojiDot, {
-            backgroundColor: member.emoji === e ? member.color + '20' : 'transparent',
-            borderColor: member.emoji === e ? member.color : theme.colors.inputBorder,
-          }]}>
-            <Text style={{ fontSize: 16 }}>{e}</Text>
-          </View>
-        </Pressable>
-      ))}
-    </View>
-  </Animated.View>
-);
+// ═══════════════════════════════════════════════════════════
+// ANIMATED BACKGROUND
+// ═══════════════════════════════════════════════════════════
+const AmberHalos: React.FC = () => {
+  const r1 = useSharedValue(130);
+  const r2 = useSharedValue(90);
 
+  useEffect(() => {
+    r1.value = withRepeat(
+      withTiming(180, { duration: 5000, easing: Easing.inOut(Easing.sin) }), -1, true,
+    );
+    r2.value = withDelay(1200, withRepeat(
+      withTiming(130, { duration: 6000, easing: Easing.inOut(Easing.sin) }), -1, true,
+    ));
+    return () => { r1.value = 130; r2.value = 90; };
+  }, []);
+
+  const halo1 = useAnimatedStyle(() => ({
+    width: r1.value * 2, height: r1.value * 2, borderRadius: r1.value,
+  }));
+  const halo2 = useAnimatedStyle(() => ({
+    width: r2.value * 2, height: r2.value * 2, borderRadius: r2.value,
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Animated.View style={[{
+        position: 'absolute', top: SH * 0.05, alignSelf: 'center',
+        backgroundColor: 'rgba(245,166,35,0.09)',
+      }, halo1]} />
+      <Animated.View style={[{
+        position: 'absolute', top: SH * 0.50, right: -40,
+        backgroundColor: 'rgba(232,146,10,0.06)',
+      }, halo2]} />
+    </View>
+  );
+};
+
+const AmberParticle: React.FC<{
+  top: number; left: number; size: number; delay: number;
+}> = ({ top, left, size, delay }) => {
+  const opacity = useSharedValue(0.2);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withRepeat(
+      withTiming(0.65, { duration: 2500 + Math.random() * 2000, easing: Easing.inOut(Easing.sin) }),
+      -1, true,
+    ));
+    return () => { opacity.value = 0.2; };
+  }, []);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View style={[{
+      position: 'absolute', top, left,
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: C.amber,
+    }, style]} />
+  );
+};
+
+const PARTICLES = [
+  { top: 80, left: SW * 0.12, size: 3, delay: 0 },
+  { top: 130, left: SW * 0.78, size: 2.5, delay: 500 },
+  { top: 200, left: SW * 0.45, size: 3, delay: 1000 },
+  { top: 60, left: SW * 0.9, size: 2, delay: 300 },
+  { top: SH * 0.6, left: SW * 0.2, size: 2.5, delay: 800 },
+];
+
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
 export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
   navigation,
 }) => {
-  const { theme } = useTheme();
   const updateProfile = useAuthStore((s) => s.updateProfile);
-  const addFamilyMember = useAuthStore((s) => s.addFamilyMember);
-  const isDark = theme.isDark;
 
   const [displayName, setDisplayName] = useState('');
   const [selectedColor, setSelectedColor] = useState(MEMBER_COLORS[0]);
   const [selectedEmoji, setSelectedEmoji] = useState('\u{1F60A}');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nameFocused, setNameFocused] = useState(false);
-
-  // Family members to add
-  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
 
   const avatarScale = useSharedValue(1);
   const avatarAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: avatarScale.value }],
   }));
 
-  const addNewFamilyMember = useCallback(() => {
-    // Pick next available color
-    const usedColors = [selectedColor, ...familyMembers.map(m => m.color)];
-    const nextColor = MEMBER_COLORS.find(c => !usedColors.includes(c)) || MEMBER_COLORS[1];
-    setFamilyMembers(prev => [...prev, { name: '', color: nextColor, emoji: '\u{1F60E}' }]);
-  }, [familyMembers, selectedColor]);
+  // Animated input focus
+  const nameFocus = useSharedValue(0);
+  const nameInputStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      nameFocus.value, [0, 1],
+      [C.inputBorder, C.inputFocus],
+    ),
+    shadowColor: C.amber,
+    shadowOpacity: interpolate(nameFocus.value, [0, 1], [0, 0.2]),
+    shadowRadius: interpolate(nameFocus.value, [0, 1], [0, 8]),
+    shadowOffset: { width: 0, height: 0 },
+  }));
+  const nameLabelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      nameFocus.value, [0, 1],
+      ['rgba(255,255,255,0.55)', 'rgba(245,166,35,0.80)'],
+    ),
+  }));
 
-  const updateFamilyMember = useCallback((index: number, data: Partial<FamilyMember>) => {
-    setFamilyMembers(prev => prev.map((m, i) => i === index ? { ...m, ...data } : m));
+  // Pulsing glow on avatar ring
+  const ringGlow = useSharedValue(0.15);
+  useEffect(() => {
+    ringGlow.value = withRepeat(
+      withTiming(0.35, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      -1, true,
+    );
+    return () => { ringGlow.value = 0.15; };
   }, []);
-
-  const removeFamilyMember = useCallback((index: number) => {
-    setFamilyMembers(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  const ringGlowStyle = useAnimatedStyle(() => ({
+    shadowOpacity: ringGlow.value,
+    shadowOffset: { width: 0, height: 0 },
+  }));
 
   const handleSave = useCallback(async () => {
     if (!displayName.trim()) {
       Alert.alert('Erreur', 'Choisissez un prénom ou surnom');
       return;
     }
-    // Validate family members have names
-    const invalidFamily = familyMembers.find(m => !m.name.trim());
-    if (invalidFamily) {
-      Alert.alert('Erreur', 'Chaque membre doit avoir un prénom');
-      return;
-    }
 
     setIsSubmitting(true);
 
-    // Save own profile
     const result = await updateProfile({
       displayName: displayName.trim(),
       color: selectedColor,
@@ -156,107 +206,92 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
       return;
     }
 
-    // Save family members
-    for (const fm of familyMembers) {
-      const fmResult = await addFamilyMember({
-        displayName: fm.name.trim(),
-        color: fm.color,
-        avatarEmoji: fm.emoji,
-      });
-      if (fmResult.error) {
-        setIsSubmitting(false);
-        Alert.alert('Erreur', `Impossible d'ajouter ${fm.name}: ${fmResult.error}`);
-        return;
-      }
-    }
-
     setIsSubmitting(false);
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-  }, [displayName, selectedColor, selectedEmoji, familyMembers, updateProfile, addFamilyMember, navigation]);
+  }, [displayName, selectedColor, selectedEmoji, updateProfile, navigation]);
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={C.bgDeep} />
       <LinearGradient
-        colors={isDark
-          ? ['#0F0F1A', '#1A1A35', '#0F0F1A']
-          : ['#EDE8FF', '#F8F4FF', '#F4F5FA']
-        }
+        colors={[C.bgDeep, C.bgMid, C.bgDeep]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
       />
+      <AmberHalos />
+      {PARTICLES.map((p, i) => <AmberParticle key={i} {...p} />)}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
+        {/* ─── Header ─── */}
         <Animated.View entering={FadeInDown.delay(100).duration(700).springify()} style={styles.header}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Votre profil</Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          <Text style={styles.title}>Votre profil</Text>
+          <Text style={styles.subtitle}>
             Comment les autres vous verront
           </Text>
         </Animated.View>
 
-        {/* Avatar preview */}
+        {/* ─── Avatar preview ─── */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(700).springify()}
           style={[avatarAnimStyle, styles.avatarPreview]}
         >
-          <View style={[styles.avatarRing, { borderColor: selectedColor + '30' }]}>
-            <View style={[styles.avatarCircle, {
-              backgroundColor: selectedColor + '15',
-              borderColor: selectedColor,
-              shadowColor: selectedColor,
-            }]}>
-              <Text style={styles.avatarEmoji}>{selectedEmoji}</Text>
+          <Animated.View style={[styles.avatarOuter, {
+            shadowColor: selectedColor,
+          }, ringGlowStyle]}>
+            <View style={[styles.avatarRing, { borderColor: selectedColor + '35' }]}>
+              <View style={[styles.avatarCircle, {
+                backgroundColor: selectedColor + '18',
+                borderColor: selectedColor,
+              }]}>
+                <Text style={styles.avatarEmoji}>{selectedEmoji}</Text>
+              </View>
             </View>
-          </View>
-          <Text style={[styles.previewName, { color: theme.colors.text }]}>
+          </Animated.View>
+          <Text style={styles.previewName}>
             {displayName || 'Votre nom'}
           </Text>
         </Animated.View>
 
-        {/* Name input */}
+        {/* ─── Name input ─── */}
         <Animated.View entering={FadeInUp.delay(300).duration(600).springify()}>
-          <View style={[styles.section, {
-            backgroundColor: theme.colors.cardBg,
-            borderColor: theme.colors.cardBorder,
-            shadowColor: isDark ? '#7C6BFF' : '#000',
-            shadowOpacity: isDark ? 0.10 : 0.05,
-          }]}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Prénom ou surnom</Text>
-            <View style={[styles.inputContainer, {
-              borderColor: nameFocused ? theme.colors.inputBorderFocused : theme.colors.inputBorder,
-              backgroundColor: theme.colors.inputBg,
-            }]}>
-              <Text style={styles.inputIcon}>{'\u270F\uFE0F'}</Text>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionDot} />
+              <Animated.Text style={[styles.sectionLabel, nameLabelStyle]}>PRÉNOM OU SURNOM</Animated.Text>
+            </View>
+            <Animated.View style={[styles.inputContainer, nameInputStyle]}>
+              <View style={styles.inputIconWrap}>
+                <Text style={styles.inputIcon}>{'\u270F\uFE0F'}</Text>
+              </View>
               <TextInput
-                style={[styles.input, { color: theme.colors.text }]}
+                style={styles.input}
                 placeholder="Ex: Alex, Maman, Papa..."
-                placeholderTextColor={theme.colors.textMuted}
+                placeholderTextColor={C.textMuted}
+                selectionColor={C.amber}
                 value={displayName}
                 onChangeText={setDisplayName}
-                onFocus={() => setNameFocused(true)}
-                onBlur={() => setNameFocused(false)}
+                onFocus={() => { nameFocus.value = withTiming(1, { duration: 200 }); }}
+                onBlur={() => { nameFocus.value = withTiming(0, { duration: 200 }); }}
                 maxLength={30}
               />
-            </View>
+            </Animated.View>
           </View>
         </Animated.View>
 
-        {/* Color picker */}
+        {/* ─── Color picker ─── */}
         <Animated.View entering={FadeInUp.delay(400).duration(600).springify()}>
-          <View style={[styles.section, {
-            backgroundColor: theme.colors.cardBg,
-            borderColor: theme.colors.cardBorder,
-            shadowColor: isDark ? '#7C6BFF' : '#000',
-            shadowOpacity: isDark ? 0.10 : 0.05,
-          }]}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Votre couleur</Text>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.sectionDot, { backgroundColor: selectedColor }]} />
+              <Text style={styles.sectionTitle}>Votre couleur</Text>
+            </View>
             <View style={styles.colorGrid}>
-              {MEMBER_COLORS.map((color) => (
+              {MEMBER_COLORS.map((color, i) => (
                 <Pressable
                   key={color}
                   onPress={() => {
@@ -267,12 +302,13 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
                   }}
                   style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.9 : 1 }] }]}
                 >
-                  <View
+                  <Animated.View
+                    entering={FadeIn.delay(400 + i * 40).duration(300)}
                     style={[
                       styles.colorCircle,
                       { backgroundColor: color },
                       selectedColor === color && [styles.colorSelected, {
-                        borderColor: isDark ? '#FFFFFF' : '#000000',
+                        borderColor: '#FFFFFF',
                         shadowColor: color,
                       }],
                     ]}
@@ -283,17 +319,15 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
           </View>
         </Animated.View>
 
-        {/* Emoji picker */}
+        {/* ─── Emoji picker ─── */}
         <Animated.View entering={FadeInUp.delay(500).duration(600).springify()}>
-          <View style={[styles.section, {
-            backgroundColor: theme.colors.cardBg,
-            borderColor: theme.colors.cardBorder,
-            shadowColor: isDark ? '#7C6BFF' : '#000',
-            shadowOpacity: isDark ? 0.10 : 0.05,
-          }]}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Votre avatar</Text>
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={{ fontSize: 14 }}>{selectedEmoji}</Text>
+              <Text style={styles.sectionTitle}>Votre avatar</Text>
+            </View>
             <View style={styles.emojiGrid}>
-              {AVATAR_EMOJIS.map((emoji) => (
+              {AVATAR_EMOJIS.map((emoji, i) => (
                 <Pressable
                   key={emoji}
                   onPress={() => {
@@ -304,73 +338,31 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
                   }}
                   style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.9 : 1 }] }]}
                 >
-                  <View
+                  <Animated.View
+                    entering={FadeIn.delay(500 + i * 25).duration(250)}
                     style={[
                       styles.emojiCircle,
                       {
                         backgroundColor:
                           selectedEmoji === emoji
-                            ? selectedColor + '15'
-                            : isDark ? 'rgba(255,255,255,0.04)' : theme.colors.inputBg,
+                            ? selectedColor + '18'
+                            : 'rgba(255,255,255,0.04)',
                         borderColor:
                           selectedEmoji === emoji
                             ? selectedColor
-                            : theme.colors.inputBorder,
+                            : C.inputBorder,
                       },
                     ]}
                   >
                     <Text style={styles.emojiText}>{emoji}</Text>
-                  </View>
+                  </Animated.View>
                 </Pressable>
               ))}
             </View>
           </View>
         </Animated.View>
 
-        {/* ─── Family members section ─── */}
-        <Animated.View entering={FadeInUp.delay(600).duration(600).springify()}>
-          <View style={[styles.section, {
-            backgroundColor: theme.colors.cardBg,
-            borderColor: theme.colors.cardBorder,
-            shadowColor: isDark ? '#7C6BFF' : '#000',
-            shadowOpacity: isDark ? 0.10 : 0.05,
-          }]}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              {'\u{1F46A}'} Membres du foyer
-            </Text>
-            <Text style={[styles.familySubtitle, { color: theme.colors.textSecondary }]}>
-              Ajoutez les membres de votre famille (optionnel)
-            </Text>
-
-            {/* Added family members */}
-            {familyMembers.map((fm, idx) => (
-              <MiniPicker
-                key={idx}
-                member={fm}
-                index={idx}
-                onUpdate={updateFamilyMember}
-                onRemove={removeFamilyMember}
-                theme={theme}
-                isDark={isDark}
-              />
-            ))}
-
-            {/* Add button */}
-            <Pressable
-              onPress={addNewFamilyMember}
-              style={({ pressed }) => [styles.addMemberBtn, {
-                borderColor: theme.colors.primary + '40',
-                backgroundColor: pressed ? theme.colors.primary + '10' : 'transparent',
-              }]}
-            >
-              <Text style={[styles.addMemberBtnText, { color: theme.colors.primary }]}>
-                + Ajouter un membre
-              </Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-
-        {/* Save button */}
+        {/* ─── Save button ─── */}
         <Animated.View entering={FadeInUp.delay(700).duration(600).springify()}>
           <Pressable
             onPress={handleSave}
@@ -381,7 +373,7 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
             }]}
           >
             <LinearGradient
-              colors={isDark ? ['#5A4BFF', '#7C6BFF'] : ['#6C5CE7', '#A29BFE']}
+              colors={[C.amber, C.amberWarm]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.saveBtnGradient}
@@ -399,78 +391,109 @@ export const MemberProfileScreen: React.FC<MemberProfileScreenProps> = ({
   );
 };
 
+// ═══════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: C.bgDeep },
   scrollContent: { paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40 },
+
+  // ─── Header ───
   header: { alignItems: 'center', marginBottom: 20 },
-  title: { fontFamily: 'Nunito-Bold', fontSize: 32, letterSpacing: -0.8, marginBottom: 6 },
-  subtitle: { fontFamily: 'DMSans-Regular', fontSize: 16, letterSpacing: 0.2 },
-  avatarPreview: { alignItems: 'center', marginBottom: 24 },
+  title: {
+    fontFamily: 'Nunito-Bold', fontSize: 34, color: C.textPrimary,
+    letterSpacing: -0.8, marginBottom: 6,
+  },
+  subtitle: {
+    fontFamily: 'DMSans-Regular', fontSize: 15, color: C.textSecondary,
+    letterSpacing: 0.2,
+  },
+
+  // ─── Avatar ───
+  avatarPreview: { alignItems: 'center', marginBottom: 28 },
+  avatarOuter: {
+    borderRadius: 60, marginBottom: 14,
+    shadowOffset: { width: 0, height: 0 }, shadowRadius: 20, elevation: 8,
+  },
   avatarRing: {
-    width: 108, height: 108, borderRadius: 54,
-    borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    width: 114, height: 114, borderRadius: 57,
+    borderWidth: 2, alignItems: 'center', justifyContent: 'center',
   },
   avatarCircle: {
-    width: 92, height: 92, borderRadius: 46,
+    width: 96, height: 96, borderRadius: 48,
     borderWidth: 2.5, alignItems: 'center', justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 6,
   },
-  avatarEmoji: { fontSize: 44 },
-  previewName: { fontFamily: 'Nunito-Bold', fontSize: 22 },
+  avatarEmoji: { fontSize: 46 },
+  previewName: {
+    fontFamily: 'Nunito-Bold', fontSize: 24, color: C.textPrimary,
+  },
+
+  // ─── Sections ───
   section: {
-    padding: 20, marginBottom: 14, borderRadius: 20, borderWidth: 1,
-    shadowOffset: { width: 0, height: 4 }, shadowRadius: 16, elevation: 4,
+    padding: 20, marginBottom: 14, borderRadius: 22, borderWidth: 1,
+    backgroundColor: C.cardBg, borderColor: C.cardBorder,
+    shadowColor: C.amber,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16,
+    elevation: 4,
   },
-  sectionTitle: { fontFamily: 'Nunito-SemiBold', fontSize: 16, marginBottom: 12 },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+  },
+  sectionDot: {
+    width: 8, height: 8, borderRadius: 4, backgroundColor: C.amber,
+  },
+  sectionLabel: {
+    fontFamily: 'Nunito-Bold', fontSize: 11, letterSpacing: 1.5,
+  },
+  sectionTitle: {
+    fontFamily: 'Nunito-SemiBold', fontSize: 16, color: C.textPrimary,
+  },
+
+  // ─── Input ───
   inputContainer: {
-    flexDirection: 'row', alignItems: 'center', height: 54,
-    borderRadius: 14, borderWidth: 1.5, paddingHorizontal: 14, gap: 10,
+    flexDirection: 'row', alignItems: 'center', height: 56,
+    backgroundColor: C.inputBg,
+    borderRadius: 16, borderWidth: 1.5, paddingHorizontal: 14,
+    shadowOffset: { width: 0, height: 0 }, elevation: 0,
   },
-  inputIcon: { fontSize: 18 },
-  input: { flex: 1, height: 54, fontSize: 16, fontFamily: 'DMSans-Regular' },
-  colorGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center' },
-  colorCircle: { width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: 'transparent' },
+  inputIconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    alignItems: 'center', justifyContent: 'center', marginRight: 10,
+  },
+  inputIcon: { fontSize: 16 },
+  input: {
+    flex: 1, height: 56, fontSize: 16,
+    fontFamily: 'DMSans-Regular', color: C.textPrimary, padding: 0,
+  },
+
+  // ─── Colors ───
+  colorGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 14, justifyContent: 'center',
+  },
+  colorCircle: {
+    width: 46, height: 46, borderRadius: 23,
+    borderWidth: 3, borderColor: 'transparent',
+  },
   colorSelected: {
-    borderWidth: 3, transform: [{ scale: 1.15 }],
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
+    borderWidth: 3, transform: [{ scale: 1.18 }],
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.45, shadowRadius: 10, elevation: 6,
   },
-  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' },
+
+  // ─── Emojis ───
+  emojiGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
+  },
   emojiCircle: {
-    width: 50, height: 50, borderRadius: 16, borderWidth: 1.5,
+    width: 52, height: 52, borderRadius: 16, borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
   emojiText: { fontSize: 24 },
-  // Family members styles
-  familySubtitle: { fontFamily: 'DMSans-Regular', fontSize: 13, marginBottom: 14, marginTop: -6 },
-  familyCard: {
-    borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10,
-  },
-  familyCardHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8,
-  },
-  familyAvatarSmall: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 2,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  familyNameInput: {
-    flex: 1, height: 40, borderRadius: 10, borderWidth: 1, paddingHorizontal: 12,
-    fontSize: 15, fontFamily: 'DMSans-Regular',
-  },
-  familyColorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
-  familyColorDot: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: 'transparent' },
-  familyEmojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  familyEmojiDot: {
-    width: 34, height: 34, borderRadius: 10, borderWidth: 1,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addMemberBtn: {
-    height: 48, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', marginTop: 4,
-  },
-  addMemberBtnText: { fontFamily: 'DMSans-Medium', fontSize: 15 },
-  saveBtn: { marginTop: 6, borderRadius: 16, overflow: 'hidden' },
+
+  // ─── Save ───
+  saveBtn: { marginTop: 8, marginBottom: 10, borderRadius: 16, overflow: 'hidden' },
   saveBtnGradient: {
-    height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    height: 58, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
   saveBtnText: { fontFamily: 'Nunito-Bold', fontSize: 18, color: '#FFFFFF' },
 });

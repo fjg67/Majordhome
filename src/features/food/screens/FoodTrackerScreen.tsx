@@ -32,7 +32,7 @@ import { Canvas, Path, Circle, Group, vec, Line as SkiaLine } from '@shopify/rea
 import LinearGradient from 'react-native-linear-gradient';
 import { useAuthStore } from '@features/auth/store/authStore';
 import { supabase, subscribeToTable } from '@services/supabase';
-import { scheduleExpiryNotification, cancelNotification } from '@services/notifications';
+import { notificationService } from '@services/notifications';
 import type { FoodItem as FoodItemType, FoodCategory, ExpiryStatus, HouseholdMember } from '@appTypes/index';
 
 const { width: SW } = Dimensions.get('window');
@@ -569,7 +569,7 @@ export const FoodTrackerScreen: React.FC = () => {
   // ─── Consume / Delete ──────────────────────────────────
   const consume = useCallback(async (id: string) => {
     await supabase.from('food_items').update({ consumed_at: new Date().toISOString() }).eq('id', id);
-    await cancelNotification(`food-expiry-${id}`);
+    await notificationService.cancelFoodReminders(id);
     load();
   }, [load]);
 
@@ -580,7 +580,7 @@ export const FoodTrackerScreen: React.FC = () => {
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirm) return;
     await supabase.from('food_items').delete().eq('id', deleteConfirm.id);
-    await cancelNotification(`food-expiry-${deleteConfirm.id}`);
+    await notificationService.cancelFoodReminders(deleteConfirm.id);
     setDeleteConfirm(null);
     load();
   }, [deleteConfirm, load]);
@@ -635,7 +635,12 @@ export const FoodTrackerScreen: React.FC = () => {
       return;
     }
     if (data) {
-      await scheduleExpiryNotification(data.name, new Date(data.expiry_date), data.id);
+      await notificationService.scheduleFoodExpiryReminder({
+        id: data.id,
+        name: data.name,
+        expiry_date: data.expiry_date,
+        quantity: data.quantity ?? '',
+      });
     }
     setModalVisible(false);
     resetModal();

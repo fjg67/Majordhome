@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,18 +7,191 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeInUp,
+  FadeIn,
   Layout,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withDelay,
+  withSpring,
+  interpolateColor,
+  interpolate,
+  Easing,
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
-import { useTheme } from '@shared/hooks/useTheme';
 import { useAuthStore } from '../store/authStore';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '@app/navigation/types';
 
+const { width: SW, height: SH } = Dimensions.get('window');
+
+// ═══════════════════════════════════════════════════════════
+// PALETTE — Dark Amber Premium
+// ═══════════════════════════════════════════════════════════
+const C = {
+  bgDeep:      '#1A0E00',
+  bgMid:       '#261400',
+  bgSurface:   '#2E1A00',
+  bgElevated:  '#3A2200',
+
+  amber:       '#F5A623',
+  amberWarm:   '#E8920A',
+  amberSoft:   'rgba(245,166,35,0.15)',
+  amberGlow:   'rgba(245,166,35,0.30)',
+  amberBorder: 'rgba(245,166,35,0.22)',
+
+  textPrimary:   '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.58)',
+  textMuted:     'rgba(255,255,255,0.32)',
+
+  inputBg:       'rgba(255,255,255,0.06)',
+  inputBorder:   'rgba(255,255,255,0.12)',
+  inputFocus:    'rgba(245,166,35,0.45)',
+
+  success: '#34D399',
+  error:   '#FF4444',
+
+  cardBg:     'rgba(46,26,0,0.65)',
+  cardBorder: 'rgba(245,166,35,0.12)',
+};
+
+// ═══════════════════════════════════════════════════════════
+// ANIMATED BACKGROUND — Amber Halos
+// ═══════════════════════════════════════════════════════════
+const AmberHalos: React.FC = () => {
+  const r1 = useSharedValue(140);
+  const r2 = useSharedValue(100);
+  const r3 = useSharedValue(70);
+
+  useEffect(() => {
+    r1.value = withRepeat(
+      withTiming(190, { duration: 5000, easing: Easing.inOut(Easing.sin) }), -1, true,
+    );
+    r2.value = withDelay(1500, withRepeat(
+      withTiming(140, { duration: 6000, easing: Easing.inOut(Easing.sin) }), -1, true,
+    ));
+    r3.value = withDelay(800, withRepeat(
+      withTiming(110, { duration: 4500, easing: Easing.inOut(Easing.sin) }), -1, true,
+    ));
+    return () => { r1.value = 140; r2.value = 100; r3.value = 70; };
+  }, []);
+
+  const halo1 = useAnimatedStyle(() => ({
+    width: r1.value * 2, height: r1.value * 2, borderRadius: r1.value,
+  }));
+  const halo2 = useAnimatedStyle(() => ({
+    width: r2.value * 2, height: r2.value * 2, borderRadius: r2.value,
+  }));
+  const halo3 = useAnimatedStyle(() => ({
+    width: r3.value * 2, height: r3.value * 2, borderRadius: r3.value,
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Animated.View style={[{
+        position: 'absolute', top: SH * 0.08, alignSelf: 'center',
+        backgroundColor: 'rgba(245,166,35,0.10)',
+      }, halo1]} />
+      <Animated.View style={[{
+        position: 'absolute', top: SH * 0.55, right: -50,
+        backgroundColor: 'rgba(232,146,10,0.07)',
+      }, halo2]} />
+      <Animated.View style={[{
+        position: 'absolute', top: SH * 0.35, left: -35,
+        backgroundColor: 'rgba(245,166,35,0.05)',
+      }, halo3]} />
+    </View>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// FLOATING AMBER PARTICLES
+// ═══════════════════════════════════════════════════════════
+const AmberParticle: React.FC<{
+  top: number; left: number; size: number; delay: number;
+}> = ({ top, left, size, delay }) => {
+  const opacity = useSharedValue(0.2);
+  useEffect(() => {
+    opacity.value = withDelay(delay, withRepeat(
+      withTiming(0.7, { duration: 2500 + Math.random() * 2000, easing: Easing.inOut(Easing.sin) }),
+      -1, true,
+    ));
+    return () => { opacity.value = 0.2; };
+  }, []);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View style={[{
+      position: 'absolute', top, left,
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: C.amber,
+    }, style]} />
+  );
+};
+
+const PARTICLES = [
+  { top: 100, left: SW * 0.15, size: 3, delay: 0 },
+  { top: 150, left: SW * 0.75, size: 2.5, delay: 600 },
+  { top: 220, left: SW * 0.5, size: 3.5, delay: 1200 },
+  { top: 80, left: SW * 0.88, size: 2, delay: 400 },
+  { top: 280, left: SW * 0.25, size: 2.5, delay: 900 },
+  { top: SH * 0.7, left: SW * 0.6, size: 3, delay: 1500 },
+  { top: SH * 0.8, left: SW * 0.1, size: 2, delay: 700 },
+];
+
+// ═══════════════════════════════════════════════════════════
+// CODE INPUT — Individual character boxes
+// ═══════════════════════════════════════════════════════════
+const CodeBox: React.FC<{
+  char: string;
+  isActive: boolean;
+  isFilled: boolean;
+  index: number;
+}> = ({ char, isActive, isFilled, index }) => {
+  const glow = useSharedValue(0);
+
+  useEffect(() => {
+    glow.value = withTiming(isActive ? 1 : 0, { duration: 200 });
+  }, [isActive]);
+
+  const boxStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      glow.value, [0, 1],
+      [isFilled ? C.amberBorder : C.inputBorder, C.amber],
+    ),
+    shadowOpacity: interpolate(glow.value, [0, 1], [0, 0.3]),
+    shadowRadius: interpolate(glow.value, [0, 1], [0, 10]),
+    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: isFilled
+      ? 'rgba(245,166,35,0.08)'
+      : C.inputBg,
+  }));
+
+  return (
+    <Animated.View
+      entering={FadeInUp.delay(100 + index * 50).duration(400).springify()}
+      style={[styles.codeBox, boxStyle, { shadowColor: C.amber }]}
+    >
+      <Text style={styles.codeChar}>{char}</Text>
+      {isActive && !char && (
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          style={styles.codeCursor}
+        />
+      )}
+    </Animated.View>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════
 type HouseholdMode = 'choose' | 'create' | 'join';
 
 interface HouseholdSetupScreenProps {
@@ -28,7 +201,6 @@ interface HouseholdSetupScreenProps {
 export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
   navigation,
 }) => {
-  const { theme } = useTheme();
   const createHousehold = useAuthStore((s) => s.createHousehold);
   const joinHousehold = useAuthStore((s) => s.joinHousehold);
 
@@ -36,13 +208,31 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [nameFocused, setNameFocused] = useState(false);
-  const [codeFocused, setCodeFocused] = useState(false);
-  const isDark = theme.isDark;
+  const codeInputRef = useRef<TextInput>(null);
+
+  // Animated values for input focus
+  const nameFocus = useSharedValue(0);
+  const nameInputStyle = useAnimatedStyle(() => ({
+    borderColor: interpolateColor(
+      nameFocus.value, [0, 1],
+      [C.inputBorder, C.inputFocus],
+    ),
+    shadowColor: C.amber,
+    shadowOpacity: interpolate(nameFocus.value, [0, 1], [0, 0.2]),
+    shadowRadius: interpolate(nameFocus.value, [0, 1], [0, 8]),
+    shadowOffset: { width: 0, height: 0 },
+  }));
+
+  const nameLabelStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      nameFocus.value, [0, 1],
+      ['rgba(255,255,255,0.55)', 'rgba(245,166,35,0.80)'],
+    ),
+  }));
 
   const handleCreate = useCallback(async () => {
     if (!name.trim()) {
-      Alert.alert('Erreur', 'Donnez un nom \u00e0 votre foyer');
+      Alert.alert('Erreur', 'Donnez un nom à votre foyer');
       return;
     }
     setIsSubmitting(true);
@@ -58,7 +248,7 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
   const handleJoin = useCallback(async () => {
     const cleaned = code.trim().toUpperCase();
     if (cleaned.length !== 8) {
-      Alert.alert('Erreur', "Le code d'invitation doit contenir 8 caract\u00e8res");
+      Alert.alert('Erreur', "Le code d'invitation doit contenir 8 caractères");
       return;
     }
     setIsSubmitting(true);
@@ -71,131 +261,140 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
     navigation.reset({ index: 0, routes: [{ name: 'MemberProfile' }] });
   }, [code, joinHousehold, navigation]);
 
+  // Code chars split for individual boxes
+  const codeChars = code.padEnd(8, '').split('').slice(0, 8);
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={C.bgDeep} />
       <LinearGradient
-        colors={isDark
-          ? ['#0F0F1A', '#1A1A35', '#0F0F1A']
-          : ['#EDE8FF', '#F8F4FF', '#F4F5FA']
-        }
+        colors={[C.bgDeep, C.bgMid, C.bgDeep]}
         style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={{ x: 0.2, y: 0 }}
+        end={{ x: 0.8, y: 1 }}
       />
+      <AmberHalos />
+      {PARTICLES.map((p, i) => <AmberParticle key={i} {...p} />)}
 
       <View style={styles.content}>
-        {/* Header */}
+        {/* ─── Header ─── */}
         <Animated.View entering={FadeInDown.delay(100).duration(700).springify()} style={styles.header}>
-          <LinearGradient
-            colors={isDark ? ['#3A2ECC', '#7C6BFF'] : ['#EDE5FF', '#F8F0FF']}
-            style={styles.emojiBox}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.emoji}>{'\uD83C\uDFE1'}</Text>
-          </LinearGradient>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Votre foyer</Text>
-          <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
+          <View style={styles.emojiBox}>
+            <LinearGradient
+              colors={[C.amberGlow, 'rgba(245,166,35,0.08)']}
+              style={styles.emojiGlow}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+            <View style={styles.emojiCircle}>
+              <Text style={styles.emoji}>🏠</Text>
+            </View>
+          </View>
+
+          <Text style={styles.title}>
+            {mode === 'choose' ? 'Votre foyer' : mode === 'create' ? 'Créer un foyer' : 'Rejoindre'}
+          </Text>
+          <Text style={styles.subtitle}>
             {mode === 'choose'
-              ? 'Cr\u00e9ez ou rejoignez un foyer'
+              ? 'Créez ou rejoignez un foyer familial'
               : mode === 'create'
-              ? 'Donnez un nom \u00e0 votre espace \u2728'
-              : "Entrez le code d'invitation \uD83D\uDD17"}
+              ? 'Donnez un nom à votre espace ✨'
+              : 'Entrez le code d\'invitation 🔗'}
           </Text>
         </Animated.View>
 
-        {/* Choose mode */}
-        {mode === 'choose' ? (
+        {/* ─── Choose mode ─── */}
+        {mode === 'choose' && (
           <Animated.View
             entering={FadeInUp.delay(300).duration(700).springify()}
             layout={Layout.springify()}
             style={styles.choiceRow}
           >
+            {/* Create Card */}
             <Pressable
               onPress={() => setMode('create')}
-              style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+              style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.95 : 1 }] }]}
             >
-              <View style={[styles.choiceCard, {
-                backgroundColor: theme.colors.cardBg,
-                borderColor: theme.colors.cardBorder,
-                shadowColor: isDark ? '#7C6BFF' : '#000',
-                shadowOpacity: isDark ? 0.12 : 0.06,
-              }]}>
-                <LinearGradient
-                  colors={isDark ? ['rgba(255,159,67,0.15)', 'rgba(255,159,67,0.05)'] : ['rgba(255,159,67,0.10)', 'rgba(255,159,67,0.03)']}
-                  style={styles.choiceIconCircle}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.choiceEmoji}>{'\u2728'}</Text>
-                </LinearGradient>
-                <Text style={[styles.choiceTitle, { color: theme.colors.text }]}>Créer</Text>
-                <Text style={[styles.choiceDesc, { color: theme.colors.textSecondary }]}>Nouveau foyer</Text>
-              </View>
+              <Animated.View
+                entering={FadeInUp.delay(350).duration(600).springify()}
+                style={styles.choiceCard}
+              >
+                <View style={[styles.choiceGlowBar, { backgroundColor: C.amber }]} />
+                <View style={styles.choiceIconWrap}>
+                  <LinearGradient
+                    colors={['rgba(245,166,35,0.20)', 'rgba(245,166,35,0.05)']}
+                    style={styles.choiceIconCircle}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={styles.choiceEmoji}>✨</Text>
+                  </LinearGradient>
+                </View>
+                <Text style={styles.choiceTitle}>Créer</Text>
+                <Text style={styles.choiceDesc}>Nouveau foyer</Text>
+              </Animated.View>
             </Pressable>
 
+            {/* Join Card */}
             <Pressable
               onPress={() => setMode('join')}
-              style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+              style={({ pressed }) => [{ transform: [{ scale: pressed ? 0.95 : 1 }] }]}
             >
-              <View style={[styles.choiceCard, {
-                backgroundColor: theme.colors.cardBg,
-                borderColor: theme.colors.cardBorder,
-                shadowColor: isDark ? '#7C6BFF' : '#000',
-                shadowOpacity: isDark ? 0.12 : 0.06,
-              }]}>
-                <LinearGradient
-                  colors={isDark ? ['rgba(124,107,255,0.15)', 'rgba(124,107,255,0.05)'] : ['rgba(108,92,231,0.10)', 'rgba(108,92,231,0.03)']}
-                  style={styles.choiceIconCircle}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.choiceEmoji}>{'\uD83D\uDD17'}</Text>
-                </LinearGradient>
-                <Text style={[styles.choiceTitle, { color: theme.colors.text }]}>Rejoindre</Text>
-                <Text style={[styles.choiceDesc, { color: theme.colors.textSecondary }]}>Code d'invitation</Text>
-              </View>
+              <Animated.View
+                entering={FadeInUp.delay(450).duration(600).springify()}
+                style={styles.choiceCard}
+              >
+                <View style={[styles.choiceGlowBar, { backgroundColor: C.success }]} />
+                <View style={styles.choiceIconWrap}>
+                  <LinearGradient
+                    colors={['rgba(52,211,153,0.20)', 'rgba(52,211,153,0.05)']}
+                    style={styles.choiceIconCircle}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={styles.choiceEmoji}>🔗</Text>
+                  </LinearGradient>
+                </View>
+                <Text style={styles.choiceTitle}>Rejoindre</Text>
+                <Text style={styles.choiceDesc}>Code d'invitation</Text>
+              </Animated.View>
             </Pressable>
           </Animated.View>
-        ) : null}
+        )}
 
-        {/* Create form */}
-        {mode === 'create' ? (
+        {/* ─── Create form ─── */}
+        {mode === 'create' && (
           <Animated.View entering={FadeInUp.delay(100).duration(600).springify()} layout={Layout.springify()}>
-            <View style={[styles.formCard, {
-              backgroundColor: theme.colors.cardBg,
-              borderColor: theme.colors.cardBorder,
-              shadowColor: isDark ? '#7C6BFF' : '#000',
-              shadowOpacity: isDark ? 0.12 : 0.06,
-            }]}>
-              <View style={[styles.accentLine, { backgroundColor: 'transparent' }]}>
-                <View style={styles.accentGradient}>
-                  <View style={[styles.accentSegment, { backgroundColor: '#FF9F43' }]} />
-                  <View style={[styles.accentSegment, { backgroundColor: theme.colors.primary }]} />
-                  <View style={[styles.accentSegment, { backgroundColor: '#2ED47A' }]} />
-                </View>
+            <View style={styles.formCard}>
+              <View style={styles.formAccent}>
+                <LinearGradient
+                  colors={[C.amber, C.amberWarm, 'rgba(245,166,35,0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.formAccentGradient}
+                />
               </View>
 
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>NOM DU FOYER</Text>
-              <View style={[styles.inputContainer, {
-                borderColor: nameFocused ? theme.colors.inputBorderFocused : theme.colors.inputBorder,
-                backgroundColor: theme.colors.inputBg,
-              }]}>
-                <Text style={styles.inputIcon}>{'\uD83C\uDFE1'}</Text>
+              <Animated.Text style={[styles.label, nameLabelStyle]}>NOM DU FOYER</Animated.Text>
+              <Animated.View style={[styles.inputContainer, nameInputStyle]}>
+                <View style={styles.inputIconWrap}>
+                  <Text style={styles.inputIcon}>🏠</Text>
+                </View>
                 <TextInput
-                  style={[styles.input, { color: theme.colors.text }]}
+                  style={styles.input}
                   placeholder="Ex: La maison Dupont"
-                  placeholderTextColor={theme.colors.textMuted}
+                  placeholderTextColor={C.textMuted}
+                  selectionColor={C.amber}
                   value={name}
                   onChangeText={setName}
-                  onFocus={() => setNameFocused(true)}
-                  onBlur={() => setNameFocused(false)}
+                  onFocus={() => { nameFocus.value = withTiming(1, { duration: 200 }); }}
+                  onBlur={() => { nameFocus.value = withTiming(0, { duration: 200 }); }}
                   autoFocus
                   maxLength={40}
                   returnKeyType="done"
                   onSubmitEditing={handleCreate}
                 />
-              </View>
+              </Animated.View>
 
               <Pressable
                 onPress={handleCreate}
@@ -206,7 +405,7 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
                 }]}
               >
                 <LinearGradient
-                  colors={['#FF9F43', '#FFB86C']}
+                  colors={[C.amber, C.amberWarm]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.submitGradient}
@@ -214,70 +413,89 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
                   {isSubmitting ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.submitText}>Créer le foyer</Text>
+                    <Text style={styles.submitText}>Créer le foyer ✨</Text>
                   )}
                 </LinearGradient>
               </Pressable>
 
               <Pressable
-                onPress={() => setMode('choose')}
+                onPress={() => { setMode('choose'); setName(''); }}
                 style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
               >
-                <Text style={[styles.backText, { color: theme.colors.textMuted }]}>{'\u2190'} Retour</Text>
+                <Text style={styles.backText}>← Retour</Text>
               </Pressable>
             </View>
           </Animated.View>
-        ) : null}
+        )}
 
-        {/* Join form */}
-        {mode === 'join' ? (
+        {/* ─── Join form ─── */}
+        {mode === 'join' && (
           <Animated.View entering={FadeInUp.delay(100).duration(600).springify()} layout={Layout.springify()}>
-            <View style={[styles.formCard, {
-              backgroundColor: theme.colors.cardBg,
-              borderColor: theme.colors.cardBorder,
-              shadowColor: isDark ? '#7C6BFF' : '#000',
-              shadowOpacity: isDark ? 0.12 : 0.06,
-            }]}>
-              <View style={[styles.accentLine, { backgroundColor: 'transparent' }]}>
-                <View style={styles.accentGradient}>
-                  <View style={[styles.accentSegment, { backgroundColor: theme.colors.primary }]} />
-                  <View style={[styles.accentSegment, { backgroundColor: '#2ED47A' }]} />
-                  <View style={[styles.accentSegment, { backgroundColor: '#FF6B6B' }]} />
-                </View>
+            <View style={styles.formCard}>
+              <View style={styles.formAccent}>
+                <LinearGradient
+                  colors={[C.success, 'rgba(52,211,153,0.4)', 'rgba(52,211,153,0)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.formAccentGradient}
+                />
               </View>
 
-              <Text style={[styles.label, { color: theme.colors.textSecondary }]}>CODE D'INVITATION (8 CARACTÈRES)</Text>
-              <View style={[styles.inputContainer, {
-                borderColor: codeFocused ? theme.colors.inputBorderFocused : theme.colors.inputBorder,
-                backgroundColor: theme.colors.inputBg,
-              }]}>
-                <Text style={styles.inputIcon}>{'\uD83D\uDD11'}</Text>
+              <Text style={styles.labelStatic}>CODE D'INVITATION</Text>
+              <Text style={styles.codeHint}>Entrez le code à 8 caractères partagé par un membre du foyer</Text>
+
+              {/* Individual code boxes */}
+              <Pressable
+                onPress={() => codeInputRef.current?.focus()}
+                style={styles.codeBoxRow}
+              >
+                {codeChars.map((char, i) => (
+                  <CodeBox
+                    key={i}
+                    char={char}
+                    isActive={i === code.length && code.length < 8}
+                    isFilled={!!char.trim()}
+                    index={i}
+                  />
+                ))}
+                {/* Hidden input */}
                 <TextInput
-                  style={[styles.input, styles.codeInput, { color: theme.colors.text }]}
-                  placeholder="ABCD1234"
-                  placeholderTextColor={theme.colors.textMuted}
+                  ref={codeInputRef}
+                  style={styles.hiddenInput}
                   value={code}
-                  onChangeText={(t) => setCode(t.toUpperCase().slice(0, 8))}
-                  onFocus={() => setCodeFocused(true)}
-                  onBlur={() => setCodeFocused(false)}
+                  onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
                   autoFocus
                   autoCapitalize="characters"
                   maxLength={8}
                   returnKeyType="done"
                   onSubmitEditing={handleJoin}
+                  caretHidden
                 />
+              </Pressable>
+
+              {/* Progress dots */}
+              <View style={styles.progressRow}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.progressDot,
+                      { backgroundColor: i < code.length ? C.amber : 'rgba(255,255,255,0.12)' },
+                    ]}
+                  />
+                ))}
               </View>
 
               <Pressable
                 onPress={handleJoin}
-                disabled={isSubmitting}
+                disabled={isSubmitting || code.length < 8}
                 style={({ pressed }) => [styles.submitBtn, {
-                  opacity: isSubmitting ? 0.65 : pressed ? 0.85 : 1,
+                  opacity: isSubmitting ? 0.65 : code.length < 8 ? 0.4 : pressed ? 0.85 : 1,
                   transform: [{ scale: pressed ? 0.975 : 1 }],
                 }]}
               >
                 <LinearGradient
-                  colors={isDark ? ['#5A4BFF', '#7C6BFF'] : ['#6C5CE7', '#A29BFE']}
+                  colors={code.length === 8 ? [C.success, '#2BBF8A'] : ['rgba(52,211,153,0.3)', 'rgba(52,211,153,0.15)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.submitGradient}
@@ -285,102 +503,180 @@ export const HouseholdSetupScreen: React.FC<HouseholdSetupScreenProps> = ({
                   {isSubmitting ? (
                     <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.submitText}>Rejoindre</Text>
+                    <Text style={styles.submitText}>Rejoindre le foyer 🔗</Text>
                   )}
                 </LinearGradient>
               </Pressable>
 
               <Pressable
-                onPress={() => setMode('choose')}
+                onPress={() => { setMode('choose'); setCode(''); }}
                 style={({ pressed }) => [styles.backBtn, { opacity: pressed ? 0.6 : 1 }]}
               >
-                <Text style={[styles.backText, { color: theme.colors.textMuted }]}>{'\u2190'} Retour</Text>
+                <Text style={styles.backText}>← Retour</Text>
               </Pressable>
             </View>
           </Animated.View>
-        ) : null}
+        )}
       </View>
     </View>
   );
 };
 
+// ═══════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: C.bgDeep },
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
-  header: { alignItems: 'center', marginBottom: 32 },
-  emojiBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: '#6C5CE7',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
+
+  // ─── Header ───
+  header: { alignItems: 'center', marginBottom: 36 },
+  emojiBox: { alignItems: 'center', justifyContent: 'center', marginBottom: 18, width: 88, height: 88 },
+  emojiGlow: {
+    position: 'absolute', width: 88, height: 88, borderRadius: 44,
+  },
+  emojiCircle: {
+    width: 72, height: 72, borderRadius: 24,
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    borderWidth: 1, borderColor: C.amberBorder,
+    alignItems: 'center', justifyContent: 'center',
   },
   emoji: { fontSize: 36 },
-  title: { fontFamily: 'Nunito-Bold', fontSize: 32, letterSpacing: -0.8, marginBottom: 6 },
-  subtitle: { fontFamily: 'DMSans-Regular', fontSize: 16, textAlign: 'center', letterSpacing: 0.2 },
+  title: {
+    fontFamily: 'Nunito-Bold', fontSize: 34, color: C.textPrimary,
+    letterSpacing: -0.8, marginBottom: 6,
+  },
+  subtitle: {
+    fontFamily: 'DMSans-Regular', fontSize: 15, color: C.textSecondary,
+    textAlign: 'center', letterSpacing: 0.2, lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+
+  // ─── Choice cards ───
   choiceRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
   choiceCard: {
-    width: 155,
-    alignItems: 'center',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    borderWidth: 1,
+    width: 158, alignItems: 'center',
+    paddingVertical: 28, paddingHorizontal: 16,
+    borderRadius: 22, borderWidth: 1,
+    backgroundColor: C.cardBg,
+    borderColor: C.cardBorder,
+    shadowColor: C.amber,
     shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 4,
+    overflow: 'hidden',
   },
+  choiceGlowBar: {
+    position: 'absolute', top: 0, left: 0, right: 0,
+    height: 3, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+  },
+  choiceIconWrap: { marginBottom: 14, marginTop: 4 },
   choiceIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    width: 58, height: 58, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
   choiceEmoji: { fontSize: 28 },
-  choiceTitle: { fontFamily: 'Nunito-Bold', fontSize: 18, marginBottom: 4 },
-  choiceDesc: { fontFamily: 'DMSans-Regular', fontSize: 13, textAlign: 'center' },
+  choiceTitle: { fontFamily: 'Nunito-Bold', fontSize: 18, color: C.textPrimary, marginBottom: 4 },
+  choiceDesc: { fontFamily: 'DMSans-Regular', fontSize: 13, color: C.textSecondary, textAlign: 'center' },
+
+  // ─── Form card ───
   formCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 24,
-    paddingTop: 0,
+    borderRadius: 24, borderWidth: 1,
+    backgroundColor: C.cardBg,
+    borderColor: C.cardBorder,
+    padding: 24, paddingTop: 0,
     overflow: 'hidden',
+    shadowColor: C.amber,
     shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 5,
   },
-  accentLine: { height: 3, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginHorizontal: -24, marginBottom: 20, overflow: 'hidden' },
-  accentGradient: { flexDirection: 'row', height: 3 },
-  accentSegment: { flex: 1, height: 3 },
-  label: { fontFamily: 'DMSans-Medium', fontSize: 11, letterSpacing: 1.5, marginTop: 8, marginBottom: 8 },
+  formAccent: {
+    height: 3, marginHorizontal: -24, marginBottom: 22,
+    overflow: 'hidden',
+  },
+  formAccentGradient: { flex: 1, height: 3 },
+
+  // ─── Label ───
+  label: {
+    fontFamily: 'Nunito-Bold', fontSize: 11,
+    letterSpacing: 1.5, marginTop: 4, marginBottom: 8, marginLeft: 2,
+  },
+  labelStatic: {
+    fontFamily: 'Nunito-Bold', fontSize: 11,
+    letterSpacing: 1.5, marginTop: 4, marginBottom: 6, marginLeft: 2,
+    color: 'rgba(255,255,255,0.55)',
+  },
+
+  // ─── Input ───
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 54,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    paddingHorizontal: 14,
-    gap: 10,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.inputBg,
+    borderRadius: 16, borderWidth: 1.5,
+    paddingHorizontal: 14, paddingVertical: 0,
+    height: 56,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
-  inputIcon: { fontSize: 18 },
-  input: { flex: 1, height: 54, fontSize: 16, fontFamily: 'DMSans-Regular' },
-  codeInput: { fontFamily: 'JetBrainsMono-Regular', fontSize: 22, letterSpacing: 6, textAlign: 'center' },
-  submitBtn: { marginTop: 20, borderRadius: 14, overflow: 'hidden' },
+  inputIconWrap: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: 'rgba(245,166,35,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  inputIcon: { fontSize: 16 },
+  input: {
+    flex: 1, marginLeft: 10,
+    fontFamily: 'DMSans-Regular', fontSize: 16,
+    color: C.textPrimary, padding: 0, height: 56,
+  },
+
+  // ─── Code boxes ───
+  codeHint: {
+    fontFamily: 'DMSans-Regular', fontSize: 13, color: C.textMuted,
+    marginBottom: 18, lineHeight: 18,
+  },
+  codeBoxRow: {
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
+    position: 'relative',
+  },
+  codeBox: {
+    width: 38, height: 50,
+    borderRadius: 12, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
+  codeChar: {
+    fontFamily: 'Nunito-Bold', fontSize: 22, color: C.amber,
+    letterSpacing: 0,
+  },
+  codeCursor: {
+    width: 2, height: 24, borderRadius: 1,
+    backgroundColor: C.amber,
+  },
+  hiddenInput: {
+    position: 'absolute', width: 1, height: 1,
+    opacity: 0,
+  },
+  progressRow: {
+    flexDirection: 'row', justifyContent: 'center', gap: 6,
+    marginTop: 12, marginBottom: 4,
+  },
+  progressDot: {
+    width: 6, height: 6, borderRadius: 3,
+  },
+
+  // ─── Submit button ───
+  submitBtn: { marginTop: 20, borderRadius: 16, overflow: 'hidden' },
   submitGradient: {
-    height: 54,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    height: 56, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
   },
   submitText: { fontFamily: 'Nunito-Bold', fontSize: 16, color: '#FFFFFF', letterSpacing: 0.3 },
+
+  // ─── Back ───
   backBtn: { alignSelf: 'center', paddingVertical: 14, marginTop: 4 },
-  backText: { fontFamily: 'DMSans-Medium', fontSize: 14 },
+  backText: { fontFamily: 'DMSans-Medium', fontSize: 14, color: C.textMuted },
 });

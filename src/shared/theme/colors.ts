@@ -101,6 +101,14 @@ export const MEMBER_COLORS: readonly string[] = [
   '#DDA0DD', // mauve
   '#F0E68C', // kaki clair
   '#87CEEB', // bleu pastel
+  '#F5A623', // ambre
+  '#A78BFA', // violet
+  '#34D399', // émeraude
+  '#F472B6', // rose vif
+  '#60A5FA', // bleu vif
+  '#FBBF24', // jaune doré
+  '#FB923C', // orange
+  '#E879F9', // fuchsia
 ] as const;
 
 export const PRIORITY_COLORS = {

@@ -6,7 +6,7 @@ import { navigationRef } from './navigationRef';
 
 function navigate(screen: string, params?: Record<string, unknown>): void {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(screen as never, params as never);
+    (navigationRef as any).navigate(screen, params);
   }
 }
 

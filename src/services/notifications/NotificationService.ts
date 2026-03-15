@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import notifee, {
   AndroidImportance,
   TriggerType,
@@ -37,12 +37,41 @@ class NotificationService {
     this.userId = userId;
     this.householdId = householdId;
 
-    await createAllChannels();
-    await this.requestPermissions();
-    await this.setupFCM();
-    await this.setupRealtimeListeners();
-    await this.scheduleRecurringNotifications();
-    await this.checkExpiredFoodOnLaunch();
+    try {
+      await createAllChannels();
+    } catch (e) {
+      console.warn('[NotificationService] Channel creation error:', e);
+    }
+
+    try {
+      await this.requestPermissions();
+    } catch (e) {
+      console.warn('[NotificationService] Permission request error:', e);
+    }
+
+    try {
+      await this.setupFCM();
+    } catch (e) {
+      console.warn('[NotificationService] FCM setup error (placeholder config?):', e);
+    }
+
+    try {
+      await this.setupRealtimeListeners();
+    } catch (e) {
+      console.warn('[NotificationService] Realtime listeners error:', e);
+    }
+
+    try {
+      await this.scheduleRecurringNotifications();
+    } catch (e) {
+      console.warn('[NotificationService] Recurring notifications error:', e);
+    }
+
+    try {
+      await this.checkExpiredFoodOnLaunch();
+    } catch (e) {
+      console.warn('[NotificationService] Expired food check error:', e);
+    }
 
     console.log('[NotificationService] Initialized ✓');
   }
@@ -56,6 +85,17 @@ class NotificationService {
   // ── PERMISSIONS ─────────────────────
 
   async requestPermissions(): Promise<boolean> {
+    // Android 13+ (API 33) requires POST_NOTIFICATIONS runtime permission
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.warn('[NotificationService] POST_NOTIFICATIONS permission denied');
+        return false;
+      }
+    }
+
     const settings = await notifee.requestPermission({
       sound: true,
       alert: true,
@@ -63,12 +103,16 @@ class NotificationService {
       provisional: false,
     });
 
-    await messaging().requestPermission({
-      alert: true,
-      badge: true,
-      sound: true,
-      criticalAlert: false,
-    });
+    try {
+      await messaging().requestPermission({
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: false,
+      });
+    } catch (e) {
+      console.warn('[NotificationService] FCM permission error:', e);
+    }
 
     return settings.authorizationStatus >= 1;
   }
@@ -86,30 +130,31 @@ class NotificationService {
           updated_at: new Date().toISOString(),
         });
       }
-    } catch (e) {
-      console.warn('[NotificationService] FCM token error:', e);
-    }
 
-    messaging().onTokenRefresh(async (newToken) => {
-      await supabase.from('device_tokens').upsert({
-        user_id: this.userId,
-        token: newToken,
-        platform: Platform.OS,
-        updated_at: new Date().toISOString(),
+      messaging().onTokenRefresh(async (newToken) => {
+        await supabase.from('device_tokens').upsert({
+          user_id: this.userId,
+          token: newToken,
+          platform: Platform.OS,
+          updated_at: new Date().toISOString(),
+        });
       });
-    });
 
-    messaging().onMessage(async (remoteMessage) => {
-      if (remoteMessage.data?.type) {
-        await this.displayNotification(
-          remoteMessage.data as unknown as NotificationPayload,
-        );
-      }
-    });
+      messaging().onMessage(async (remoteMessage) => {
+        if (remoteMessage.data?.type) {
+          await this.displayNotification(
+            remoteMessage.data as unknown as NotificationPayload,
+          );
+        }
+      });
 
-    messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-      console.log('[FCM] Background message:', remoteMessage.messageId);
-    });
+      messaging().setBackgroundMessageHandler(async (remoteMessage) => {
+        console.log('[FCM] Background message:', remoteMessage.messageId);
+      });
+    } catch (e) {
+      // FCM may fail with placeholder google-services.json — local notifications still work
+      console.warn('[NotificationService] FCM setup failed (push notifications disabled):', e);
+    }
   }
 
   // ── REALTIME SUPABASE ────────────────
@@ -714,7 +759,7 @@ class NotificationService {
         largeIcon: 'ic_launcher',
         color: config.android?.color ?? '#F5A623',
         pressAction: { id: 'default' },
-        style: config.android?.style,
+        style: config.android?.style as any,
         actions: config.android?.actions,
         importance:
           config.android?.importance ?? AndroidImportance.DEFAULT,

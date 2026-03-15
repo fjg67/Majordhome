@@ -27,7 +27,7 @@ export async function nativeFetch(
   if (init?.headers) {
     const headerObj: Record<string, string> = {};
     if (init.headers instanceof Headers) {
-      init.headers.forEach((value, key) => {
+      init.headers.forEach((value: string, key: string) => {
         headerObj[key] = value;
       });
     } else if (Array.isArray(init.headers)) {

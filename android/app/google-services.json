@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "majordhome-placeholder",
-    "storage_bucket": "majordhome-placeholder.appspot.com"
+    "project_number": "1065077452313",
+    "project_id": "majordhome-dcef1",
+    "storage_bucket": "majordhome-dcef1.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:1065077452313:android:7b527dc643573d6d668488",
         "android_client_info": {
           "package_name": "com.majordhome"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyPLACEHOLDER_REPLACE_WITH_REAL_KEY"
+          "current_key": "AIzaSyCJdUxsTYjVbYBvzqTxlgVWG5CuUvYBrio"
         }
       ],
       "services": {

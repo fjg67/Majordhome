@@ -31,7 +31,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '@services/supabase';
-import { nativeFetch } from '@services/nativeFetch';
 import { MEMBER_COLORS } from '@shared/theme/colors';
 
 const AVATAR_EMOJIS = [
@@ -526,36 +525,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     setFieldErrors({});
   }, []);
 
-  // ─── Network diagnostic ─────────────────────────────────
-  const [diagResult, setDiagResult] = useState<string | null>(null);
-  const runDiag = useCallback(async () => {
-    setDiagResult('Test en cours...');
-    const results: string[] = [];
-    const t1 = Date.now();
-    try {
-      const r = await nativeFetch('https://www.google.com/generate_204', { method: 'GET' });
-      results.push(`1.Google: OK ${r.status} (${Date.now() - t1}ms)`);
-    } catch (e: any) {
-      results.push(`1.Google: ${e?.message || 'ERR'} (${Date.now() - t1}ms)`);
-    }
-    const t2 = Date.now();
-    try {
-      const r = await nativeFetch('https://yxqsgqbrzesmnpughynd.supabase.co/auth/v1/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4cXNncWJyemVzbW5wdWdoeW5kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MDc4NDAsImV4cCI6MjA4ODk4Mzg0MH0.nqhxrNaDPDOidRcYoaeeZK_qYL3zeioVqEPci9nM9co',
-        },
-        body: JSON.stringify({ email: 'diagtest@test.com', password: 'test123456' }),
-      });
-      const txt = await r.text();
-      results.push(`2.Supabase: ${r.status} ${txt.substring(0, 60)} (${Date.now() - t2}ms)`);
-    } catch (e: any) {
-      results.push(`2.Supabase: ${e?.message || 'ERR'} (${Date.now() - t2}ms)`);
-    }
-    setDiagResult(results.join('\n'));
-  }, []);
-
   // ─── Invite Code Handlers ─────────────────────────────
   const openInviteModal = useCallback(() => {
     setInviteCode('');
@@ -959,91 +928,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
             </View>
           </Animated.View>
 
-          {/* ══════ SEPARATOR ══════ */}
-          <Animated.View
-            entering={FadeIn.delay(1000).duration(400)}
-            style={{
-              flexDirection: 'row', alignItems: 'center',
-              marginVertical: 20, paddingHorizontal: 4,
-            }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.18)']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={{ flex: 1, height: 1 }}
-            />
-            <Text style={{
-              fontFamily: 'DMSans-Regular', fontSize: 12,
-              color: 'rgba(255,255,255,0.30)', marginHorizontal: 12,
-            }}>ou</Text>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.18)', 'transparent']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={{ flex: 1, height: 1 }}
-            />
-          </Animated.View>
-
-          {/* ══════ INVITE CODE BUTTON ══════ */}
-          <Animated.View entering={FadeIn.delay(1040).duration(400)}>
-            <Pressable
-              onPress={openInviteModal}
-              style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-                gap: 8, height: 50, borderRadius: 16,
-                borderWidth: 1, borderColor: C.amberBorder,
-                backgroundColor: C.amberSoft,
-                shadowColor: C.amber,
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: 0.20, shadowRadius: 10, elevation: 4,
-              }}
-              accessibilityLabel="Rejoindre avec un code d'invitation"
-            >
-              <Text style={{ fontSize: 16 }}>🏠</Text>
-              <Text style={{
-                fontFamily: 'Nunito-SemiBold', fontSize: 15,
-                color: C.amber,
-              }}>Code d'invitation</Text>
-            </Pressable>
-          </Animated.View>
-
           {/* ══════ FOOTER ══════ */}
           <Animated.View
-            entering={FadeIn.delay(1100).duration(500)}
+            entering={FadeIn.delay(1000).duration(500)}
             style={{ alignItems: 'center', marginTop: 28 }}
           >
             <Text style={{
               fontFamily: 'DMSans-Regular', fontSize: 12,
               color: 'rgba(255,255,255,0.22)',
             }}>Votre foyer, synchronisé 🏠</Text>
-
-            {__DEV__ && (
-              <Pressable
-                onPress={runDiag}
-                style={{
-                  marginTop: 12, paddingHorizontal: 16, paddingVertical: 8,
-                  backgroundColor: 'rgba(255,255,255,0.05)',
-                  borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
-                  borderRadius: 12,
-                }}
-              >
-                <Text style={{
-                  fontFamily: 'DMSans-Regular', fontSize: 11,
-                  color: 'rgba(255,255,255,0.30)',
-                }}>🔍 Test réseau</Text>
-              </Pressable>
-            )}
-
-            {diagResult && (
-              <View style={{
-                marginTop: 8, backgroundColor: 'rgba(0,0,0,0.5)',
-                padding: 12, borderRadius: 10, width: '100%',
-              }}>
-                <Text style={{
-                  fontFamily: 'DMSans-Regular', fontSize: 11,
-                  color: C.textSecondary, lineHeight: 18,
-                }}>{diagResult}</Text>
-              </View>
-            )}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
