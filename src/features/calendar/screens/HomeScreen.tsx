@@ -554,6 +554,76 @@ export const HomeScreen: React.FC = () => {
           </View>
         </Animated.View>
 
+        {/* ══════ LÉGENDE COULEURS ══════ */}
+        <Animated.View entering={FadeIn.delay(250).duration(400)} style={{
+          marginHorizontal: 16, marginTop: 6, marginBottom: 10,
+          backgroundColor: C.bgSurface, borderRadius: 16, borderWidth: 1,
+          borderColor: C.amberBorder, padding: 14,
+        }}>
+          <Text style={{
+            fontFamily: 'DMSans-Medium', fontSize: 10, color: 'rgba(245,166,35,0.55)',
+            letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10,
+          }}>Légende</Text>
+
+          {/* Tâches */}
+          <Text style={{
+            fontFamily: 'Nunito-SemiBold', fontSize: 11, color: C.amber,
+            marginBottom: 6, letterSpacing: 0.5,
+          }}>📋 Tâches</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+            {members.map(m => (
+              <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: m.color ?? C.amber }} />
+                <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>
+                  {m.display_name}
+                </Text>
+              </View>
+            ))}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#34D399' }} />
+              <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>Terminée</Text>
+            </View>
+          </View>
+
+          {/* Séparateur */}
+          <View style={{ height: 1, backgroundColor: 'rgba(245,166,35,0.10)', marginBottom: 10 }} />
+
+          {/* Aliments */}
+          <Text style={{
+            fontFamily: 'Nunito-SemiBold', fontSize: 11, color: C.amber,
+            marginBottom: 6, letterSpacing: 0.5,
+          }}>🍎 Aliments (péremption)</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF4444' }} />
+              <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>Expiré</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF8C00' }} />
+              <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>Urgent (≤2j)</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F5A623' }} />
+              <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>Bientôt (≤5j)</Text>
+            </View>
+          </View>
+
+          {/* Séparateur */}
+          <View style={{ height: 1, backgroundColor: 'rgba(245,166,35,0.10)', marginBottom: 10 }} />
+
+          {/* Événements */}
+          <Text style={{
+            fontFamily: 'Nunito-SemiBold', fontSize: 11, color: C.amber,
+            marginBottom: 6, letterSpacing: 0.5,
+          }}>📅 Événements</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#A78BFA' }} />
+              <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: C.textSecondary }}>Événement</Text>
+            </View>
+          </View>
+        </Animated.View>
+
         {/* ══════ 4. SECTION ÉVÉNEMENTS ══════ */}
         <Animated.View entering={FadeInUp.delay(280).duration(400)}>
           <View style={{
@@ -609,6 +679,11 @@ export const HomeScreen: React.FC = () => {
               const cat = (ev.category ?? 'other') as string;
               const catCfg = EVT_CAT[cat] ?? EVT_CAT.other;
               const creator = findMember(ev.created_by);
+              const assignedIds: string[] = (ev as any).assigned_members ?? [];
+              const assigned = assignedIds.length > 0
+                ? assignedIds.map(id => findMember(id)).filter(Boolean)
+                : null;
+              const displayMembers = assigned && assigned.length > 0 ? assigned : (creator ? [creator] : []);
               const time = ev.is_all_day ? 'Journée'
                 : new Date(ev.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
               const endTime = ev.end_at && !ev.is_all_day
@@ -669,7 +744,7 @@ export const HomeScreen: React.FC = () => {
                         fontFamily: 'Nunito-SemiBold', fontSize: 16, color: C.textPrimary,
                       }}>{ev.title}</Text>
                       {/* Row 3: Location + Member */}
-                      {(ev.location || creator) && (
+                      {(ev.location || displayMembers.length > 0) && (
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
                           {ev.location ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
@@ -680,16 +755,20 @@ export const HomeScreen: React.FC = () => {
                               }}>{ev.location}</Text>
                             </View>
                           ) : null}
-                          {creator && (
-                            <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                              <View style={{
-                                width: 6, height: 6, borderRadius: 3,
-                                backgroundColor: creator.color || C.amber,
-                              }} />
-                              <Text style={{
-                                fontFamily: 'DMSans-Regular', fontSize: 12,
-                                color: creator.color || C.amber,
-                              }}>{creator.display_name}</Text>
+                          {displayMembers.length > 0 && (
+                            <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              {displayMembers.map((mem: any) => (
+                                <View key={mem.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                  <View style={{
+                                    width: 6, height: 6, borderRadius: 3,
+                                    backgroundColor: mem.color || C.amber,
+                                  }} />
+                                  <Text style={{
+                                    fontFamily: 'DMSans-Regular', fontSize: 12,
+                                    color: mem.color || C.amber,
+                                  }}>{mem.display_name}</Text>
+                                </View>
+                              ))}
                             </View>
                           )}
                         </View>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MajordHome Feature Graphic Generator</title>
+  <style>
+    body { background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; color: #fff; gap: 24px; }
+    canvas { box-shadow: 0 8px 32px rgba(0,0,0,0.5); max-width: 90vw; height: auto; }
+    button { padding: 14px 32px; background: #F5A623; color: #1A0E00; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #FFD700; }
+    p { color: #999; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>MajordHome — Image de présentation 1024×500</h2>
+  <canvas id="fg" width="1024" height="500"></canvas>
+  <button onclick="download()">⬇️ Télécharger le PNG</button>
+
+  <script>
+    const canvas = document.getElementById('fg');
+    const ctx = canvas.getContext('2d');
+    const W = 1024, H = 500;
+
+    // === Background ===
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0, '#1A0E00');
+    bgGrad.addColorStop(0.5, '#261400');
+    bgGrad.addColorStop(1, '#1A0E00');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // === Large ambient orbs ===
+    function drawOrb(cx, cy, r, color) {
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0, color);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+    }
+    drawOrb(200, 100, 300, 'rgba(245, 166, 35, 0.12)');
+    drawOrb(820, 400, 250, 'rgba(232, 146, 10, 0.10)');
+    drawOrb(512, 250, 350, 'rgba(245, 166, 35, 0.06)');
+
+    // === Subtle grid dots ===
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.04)';
+    for (let x = 40; x < W; x += 40) {
+      for (let y = 40; y < H; y += 40) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // === Decorative lines ===
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.08)';
+    ctx.lineWidth = 1;
+    // Top line
+    ctx.beginPath();
+    ctx.moveTo(60, 60);
+    ctx.lineTo(W - 60, 60);
+    ctx.stroke();
+    // Bottom line
+    ctx.beginPath();
+    ctx.moveTo(60, H - 60);
+    ctx.lineTo(W - 60, H - 60);
+    ctx.stroke();
+
+    // === Corner accents ===
+    function drawCorner(x, y, dx, dy) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + dy * 24);
+      ctx.lineTo(x, y);
+      ctx.lineTo(x + dx * 24, y);
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.25)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    drawCorner(30, 30, 1, 1);
+    drawCorner(W - 30, 30, -1, 1);
+    drawCorner(30, H - 30, 1, -1);
+    drawCorner(W - 30, H - 30, -1, -1);
+
+    // === House icon (left side) ===
+    const hx = 220, hy = 210, sc = 2.2;
+
+    // Roof
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - 42 * sc);
+    ctx.lineTo(hx - 38 * sc, hy - 4 * sc);
+    ctx.lineTo(hx + 38 * sc, hy - 4 * sc);
+    ctx.closePath();
+    const roofG = ctx.createLinearGradient(hx - 38*sc, hy - 42*sc, hx + 38*sc, hy - 4*sc);
+    roofG.addColorStop(0, '#F5A623');
+    roofG.addColorStop(1, '#E8920A');
+    ctx.fillStyle = roofG;
+    ctx.shadowColor = 'rgba(245, 166, 35, 0.5)';
+    ctx.shadowBlur = 30;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Body
+    const bx = hx - 30*sc, by = hy - 6*sc, bw = 60*sc, bh = 38*sc, br = 5*sc;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + bw, by);
+    ctx.lineTo(bx + bw, by + bh - br);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
+    ctx.lineTo(bx + br, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
+    ctx.lineTo(bx, by);
+    ctx.closePath();
+    const bdG = ctx.createLinearGradient(bx, by, bx, by + bh);
+    bdG.addColorStop(0, '#3A2200');
+    bdG.addColorStop(1, '#2E1A00');
+    ctx.fillStyle = bdG;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Door
+    const dw = 16*sc, dh = 20*sc, dx = hx - dw/2, dy = by + bh - dh, dr = dw/2;
+    ctx.beginPath();
+    ctx.moveTo(dx, dy + dh);
+    ctx.lineTo(dx, dy + dr);
+    ctx.arc(dx + dr, dy + dr, dr, Math.PI, 0, false);
+    ctx.lineTo(dx + dw, dy + dh);
+    ctx.closePath();
+    const dG = ctx.createLinearGradient(dx, dy, dx, dy + dh);
+    dG.addColorStop(0, '#F5A623');
+    dG.addColorStop(1, '#C4720A');
+    ctx.fillStyle = dG;
+    ctx.shadowColor = 'rgba(245, 166, 35, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Door handle
+    ctx.beginPath();
+    ctx.arc(dx + dw * 0.7, dy + dh * 0.55, 2*sc, 0, Math.PI * 2);
+    ctx.fillStyle = '#1A0E00';
+    ctx.fill();
+
+    // Chimney
+    ctx.beginPath();
+    const cx2 = hx + 18*sc, cy2 = hy - 34*sc, cw2 = 7*sc, ch2 = 16*sc;
+    ctx.roundRect(cx2, cy2, cw2, ch2, 2*sc);
+    ctx.fillStyle = '#E8920A';
+    ctx.fill();
+
+    // Windows
+    function drawWin(wx, wy) {
+      const ws = 9*sc, wr = 2.5*sc;
+      ctx.beginPath();
+      ctx.roundRect(wx, wy, ws, ws, wr);
+      const wG = ctx.createRadialGradient(wx+ws/2, wy+ws/2, 0, wx+ws/2, wy+ws/2, ws);
+      wG.addColorStop(0, 'rgba(245, 166, 35, 0.35)');
+      wG.addColorStop(1, 'rgba(245, 166, 35, 0.12)');
+      ctx.fillStyle = wG;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.30)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // Cross
+      ctx.beginPath();
+      ctx.moveTo(wx + ws/2, wy + 2); ctx.lineTo(wx + ws/2, wy + ws - 2);
+      ctx.moveTo(wx + 2, wy + ws/2); ctx.lineTo(wx + ws - 2, wy + ws/2);
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    drawWin(hx - 20*sc, by + 9*sc);
+    drawWin(hx + 11*sc, by + 9*sc);
+
+    // === Right side — Text ===
+    const tx = 480;
+
+    // Badge
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.12)';
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.30)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(tx, 115, 200, 30, 15);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '600 12px "Segoe UI", Arial, sans-serif';
+    ctx.fillStyle = '#F5A623';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GESTION DE FOYER PARTAGÉE', tx + 16, 130);
+
+    // Title line 1
+    ctx.font = '900 56px "Segoe UI", "SF Pro Display", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('MajordHome', tx, 205);
+
+    // Title line 2 — amber gradient simulated
+    ctx.font = '900 42px "Segoe UI", "SF Pro Display", Arial, sans-serif';
+    const tGrad = ctx.createLinearGradient(tx, 240, tx + 480, 280);
+    tGrad.addColorStop(0, '#F5A623');
+    tGrad.addColorStop(0.5, '#FFD700');
+    tGrad.addColorStop(1, '#E8920A');
+    ctx.fillStyle = tGrad;
+    ctx.fillText('Votre foyer, synchronisé', tx, 268);
+
+    // Separator line
+    ctx.beginPath();
+    ctx.moveTo(tx, 300);
+    ctx.lineTo(tx + 60, 300);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.50)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(tx + 60, 300);
+    ctx.lineTo(tx + 200, 300);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Feature pills
+    const pills = [
+      { icon: '✅', text: 'Tâches' },
+      { icon: '📅', text: 'Calendrier' },
+      { icon: '🛒', text: 'Courses' },
+      { icon: '🍽️', text: 'Repas' },
+    ];
+
+    let px = tx;
+    const py = 330;
+    ctx.font = '500 14px "Segoe UI", Arial, sans-serif';
+
+    pills.forEach((pill) => {
+      const textW = ctx.measureText(pill.text).width;
+      const pillW = textW + 44;
+
+      // Pill background
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(px, py, pillW, 34, 17);
+      ctx.fill();
+      ctx.stroke();
+
+      // Icon
+      ctx.font = '16px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pill.icon, px + 12, py + 17);
+
+      // Text
+      ctx.font = '500 13px "Segoe UI", Arial, sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.70)';
+      ctx.fillText(pill.text, px + 32, py + 17);
+
+      px += pillW + 10;
+    });
+
+    // Bottom badges
+    const badges = ['🔒 Chiffrement AES-256', '🇪🇺 Hébergement EU', '📱 Temps réel'];
+    let bpx = tx;
+    const bpy = 390;
+
+    badges.forEach((badge) => {
+      ctx.font = '400 11px "Segoe UI", Arial, sans-serif';
+      const bw = ctx.measureText(badge).width + 20;
+
+      ctx.fillStyle = 'rgba(245, 166, 35, 0.08)';
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(bpx, bpy, bw, 26, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(245, 166, 35, 0.65)';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(badge, bpx + 10, bpy + 13);
+
+      bpx += bw + 8;
+    });
+
+    // === Download ===
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'majordhome-feature-graphic-1024x500.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>

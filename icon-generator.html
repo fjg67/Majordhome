@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MajordHome Icon Generator</title>
+  <style>
+    body { background: #222; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; font-family: sans-serif; color: #fff; gap: 24px; }
+    canvas { border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    button { padding: 14px 32px; background: #F5A623; color: #1A0E00; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    button:hover { background: #FFD700; }
+    p { color: #999; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h2>MajordHome — App Icon 512×512</h2>
+  <canvas id="icon" width="512" height="512"></canvas>
+  <button onclick="download()">⬇️ Télécharger l'icône PNG</button>
+  <p>Clic droit → "Enregistrer l'image sous" fonctionne aussi sur le canvas</p>
+
+  <script>
+    const canvas = document.getElementById('icon');
+    const ctx = canvas.getContext('2d');
+    const S = 512;
+
+    // === Background gradient ===
+    const bgGrad = ctx.createRadialGradient(S/2, S*0.35, 0, S/2, S/2, S*0.7);
+    bgGrad.addColorStop(0, '#2E1A00');
+    bgGrad.addColorStop(0.5, '#1A0E00');
+    bgGrad.addColorStop(1, '#0D0700');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // === Subtle radial glow behind house ===
+    const glowGrad = ctx.createRadialGradient(S/2, S*0.42, 0, S/2, S*0.42, S*0.45);
+    glowGrad.addColorStop(0, 'rgba(245, 166, 35, 0.18)');
+    glowGrad.addColorStop(0.5, 'rgba(245, 166, 35, 0.06)');
+    glowGrad.addColorStop(1, 'rgba(245, 166, 35, 0)');
+    ctx.fillStyle = glowGrad;
+    ctx.fillRect(0, 0, S, S);
+
+    // === Outer ring (decorative) ===
+    ctx.beginPath();
+    ctx.arc(S/2, S*0.42, 170, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // === Inner ring ===
+    ctx.beginPath();
+    ctx.arc(S/2, S*0.42, 140, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // === House icon — centered ===
+    const hx = S / 2;     // center x
+    const hy = S * 0.38;  // center of house (slightly above center for text below)
+    const scale = 3.2;
+
+    // -- Roof (triangle) --
+    ctx.beginPath();
+    ctx.moveTo(hx, hy - 42 * scale);           // top
+    ctx.lineTo(hx - 38 * scale, hy - 4 * scale); // bottom-left
+    ctx.lineTo(hx + 38 * scale, hy - 4 * scale); // bottom-right
+    ctx.closePath();
+
+    const roofGrad = ctx.createLinearGradient(hx - 38*scale, hy - 42*scale, hx + 38*scale, hy - 4*scale);
+    roofGrad.addColorStop(0, '#F5A623');
+    roofGrad.addColorStop(1, '#E8920A');
+    ctx.fillStyle = roofGrad;
+    ctx.fill();
+
+    // Roof shadow
+    ctx.shadowColor = 'rgba(245, 166, 35, 0.4)';
+    ctx.shadowBlur = 30;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // -- Body (rectangle with rounded bottom) --
+    const bodyX = hx - 30 * scale;
+    const bodyY = hy - 6 * scale;
+    const bodyW = 60 * scale;
+    const bodyH = 38 * scale;
+    const bodyR = 6 * scale;
+
+    ctx.beginPath();
+    ctx.moveTo(bodyX, bodyY);
+    ctx.lineTo(bodyX + bodyW, bodyY);
+    ctx.lineTo(bodyX + bodyW, bodyY + bodyH - bodyR);
+    ctx.quadraticCurveTo(bodyX + bodyW, bodyY + bodyH, bodyX + bodyW - bodyR, bodyY + bodyH);
+    ctx.lineTo(bodyX + bodyR, bodyY + bodyH);
+    ctx.quadraticCurveTo(bodyX, bodyY + bodyH, bodyX, bodyY + bodyH - bodyR);
+    ctx.lineTo(bodyX, bodyY);
+    ctx.closePath();
+
+    const bodyGrad = ctx.createLinearGradient(bodyX, bodyY, bodyX, bodyY + bodyH);
+    bodyGrad.addColorStop(0, '#3A2200');
+    bodyGrad.addColorStop(1, '#2E1A00');
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+
+    // Body border
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // -- Door (rounded top arch) --
+    const doorW = 18 * scale;
+    const doorH = 22 * scale;
+    const doorX = hx - doorW / 2;
+    const doorY = bodyY + bodyH - doorH;
+    const doorR = doorW / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(doorX, doorY + doorH);
+    ctx.lineTo(doorX, doorY + doorR);
+    ctx.arc(doorX + doorR, doorY + doorR, doorR, Math.PI, 0, false);
+    ctx.lineTo(doorX + doorW, doorY + doorH);
+    ctx.closePath();
+
+    const doorGrad = ctx.createLinearGradient(doorX, doorY, doorX, doorY + doorH);
+    doorGrad.addColorStop(0, '#F5A623');
+    doorGrad.addColorStop(1, '#C4720A');
+    ctx.fillStyle = doorGrad;
+    ctx.fill();
+
+    // Door glow
+    ctx.shadowColor = 'rgba(245, 166, 35, 0.5)';
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+
+    // -- Door handle --
+    ctx.beginPath();
+    ctx.arc(doorX + doorW * 0.7, doorY + doorH * 0.55, 2.5 * scale, 0, Math.PI * 2);
+    ctx.fillStyle = '#1A0E00';
+    ctx.fill();
+
+    // -- Chimney --
+    const chimX = hx + 20 * scale;
+    const chimY = hy - 36 * scale;
+    const chimW = 8 * scale;
+    const chimH = 18 * scale;
+    const chimR = 2 * scale;
+
+    ctx.beginPath();
+    ctx.moveTo(chimX + chimR, chimY);
+    ctx.lineTo(chimX + chimW - chimR, chimY);
+    ctx.quadraticCurveTo(chimX + chimW, chimY, chimX + chimW, chimY + chimR);
+    ctx.lineTo(chimX + chimW, chimY + chimH);
+    ctx.lineTo(chimX, chimY + chimH);
+    ctx.lineTo(chimX, chimY + chimR);
+    ctx.quadraticCurveTo(chimX, chimY, chimX + chimR, chimY);
+    ctx.closePath();
+    ctx.fillStyle = '#E8920A';
+    ctx.fill();
+
+    // -- Window left --
+    const winSize = 10 * scale;
+    const winR = 3 * scale;
+    const winLX = hx - 22 * scale;
+    const winY = bodyY + 10 * scale;
+    
+    function drawWindow(wx, wy) {
+      ctx.beginPath();
+      ctx.moveTo(wx + winR, wy);
+      ctx.lineTo(wx + winSize - winR, wy);
+      ctx.quadraticCurveTo(wx + winSize, wy, wx + winSize, wy + winR);
+      ctx.lineTo(wx + winSize, wy + winSize - winR);
+      ctx.quadraticCurveTo(wx + winSize, wy + winSize, wx + winSize - winR, wy + winSize);
+      ctx.lineTo(wx + winR, wy + winSize);
+      ctx.quadraticCurveTo(wx, wy + winSize, wx, wy + winSize - winR);
+      ctx.lineTo(wx, wy + winR);
+      ctx.quadraticCurveTo(wx, wy, wx + winR, wy);
+      ctx.closePath();
+
+      // Window fill - warm amber glow
+      const wGrad = ctx.createRadialGradient(wx + winSize/2, wy + winSize/2, 0, wx + winSize/2, wy + winSize/2, winSize);
+      wGrad.addColorStop(0, 'rgba(245, 166, 35, 0.35)');
+      wGrad.addColorStop(1, 'rgba(245, 166, 35, 0.12)');
+      ctx.fillStyle = wGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.30)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Cross divider
+      ctx.beginPath();
+      ctx.moveTo(wx + winSize/2, wy + 2);
+      ctx.lineTo(wx + winSize/2, wy + winSize - 2);
+      ctx.moveTo(wx + 2, wy + winSize/2);
+      ctx.lineTo(wx + winSize - 2, wy + winSize/2);
+      ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    drawWindow(winLX, winY);
+    drawWindow(hx + 12 * scale, winY);
+
+    // === Text "MajordHome" below house ===
+    const textY = S * 0.78;
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Brand name
+    ctx.font = '900 44px "Segoe UI", "SF Pro Display", Arial, sans-serif';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('MajordHome', S/2, textY);
+
+    // Tagline
+    ctx.font = '400 18px "Segoe UI", "SF Pro Display", Arial, sans-serif';
+    ctx.fillStyle = 'rgba(245, 166, 35, 0.65)';
+    ctx.fillText('Votre foyer, synchronisé', S/2, textY + 36);
+
+    // === Subtle corner accents ===
+    // Top-left corner
+    ctx.beginPath();
+    ctx.moveTo(24, 48);
+    ctx.lineTo(24, 24);
+    ctx.lineTo(48, 24);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Top-right corner  
+    ctx.beginPath();
+    ctx.moveTo(S - 48, 24);
+    ctx.lineTo(S - 24, 24);
+    ctx.lineTo(S - 24, 48);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Bottom-left corner
+    ctx.beginPath();
+    ctx.moveTo(24, S - 48);
+    ctx.lineTo(24, S - 24);
+    ctx.lineTo(48, S - 24);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Bottom-right corner
+    ctx.beginPath();
+    ctx.moveTo(S - 48, S - 24);
+    ctx.lineTo(S - 24, S - 24);
+    ctx.lineTo(S - 24, S - 48);
+    ctx.strokeStyle = 'rgba(245, 166, 35, 0.20)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // === Download function ===
+    function download() {
+      const link = document.createElement('a');
+      link.download = 'majordhome-icon-512.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>

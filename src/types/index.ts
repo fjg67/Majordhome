@@ -12,7 +12,7 @@ export type MemberRole = 'admin' | 'member';
 export interface HouseholdMember {
   id: string;
   household_id: string;
-  user_id: string;
+  user_id: string | null;
   display_name: string;
   color: string;
   avatar_emoji: string;
@@ -37,6 +37,7 @@ export interface CalendarEvent {
   recurrence: RecurrenceType;
   category: EventCategory;
   location: string | null;
+  assigned_members?: string[];
   created_at: string;
 }
 

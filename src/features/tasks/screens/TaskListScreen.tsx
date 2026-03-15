@@ -547,6 +547,7 @@ export const TaskListScreen: React.FC = () => {
                           fontSize: 15, fontFamily: 'Nunito-Bold', letterSpacing: -0.2,
                           color: done ? 'rgba(255,245,230,0.30)' : isMissed ? 'rgba(255,245,230,0.70)' : '#FFF5E6',
                           textDecorationLine: done ? 'line-through' : 'none',
+                          textDecorationColor: done ? personColor : undefined,
                           flex: 1,
                         }}>{item.title}</Text>
                         {isMissed && (

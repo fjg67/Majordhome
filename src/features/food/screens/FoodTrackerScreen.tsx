@@ -8,6 +8,7 @@ import {
   StatusBar,
   Alert,
   TextInput,
+  Modal,
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
@@ -308,7 +309,7 @@ const FoodCard: React.FC<{
       }} />
       <Pressable
         onLongPress={() => onDelete(item.id, item.name)}
-        style={{ flexDirection: 'row', alignItems: 'center', padding: 14, paddingLeft: 18 }}>
+        style={{ flexDirection: 'row', alignItems: 'center', padding: 14, paddingLeft: 18, paddingBottom: 8 }}>
         {/* Category icon */}
         <View style={{
           width: 46, height: 46, borderRadius: 14,
@@ -358,7 +359,7 @@ const FoodCard: React.FC<{
           </View>
         </View>
         {/* DLC circle */}
-        <Pressable onPress={() => onConsume(item.id)} style={{ marginLeft: 12 }}>
+        <View style={{ marginLeft: 12 }}>
           <Animated.View style={[{ alignItems: 'center' }, circleStyle]}>
             <View style={{
               width: 54, height: 54, borderRadius: 27,
@@ -390,8 +391,39 @@ const FoodCard: React.FC<{
               color: 'rgba(255,255,255,0.30)', marginTop: 3,
             }}>{fmtDate(item.expiry_date)}</Text>
           </Animated.View>
-        </Pressable>
+        </View>
       </Pressable>
+
+      {/* Action buttons row */}
+      <View style={{
+        flexDirection: 'row', gap: 8,
+        paddingHorizontal: 14, paddingBottom: 12, paddingLeft: 18,
+      }}>
+        <Pressable
+          onPress={() => onConsume(item.id)}
+          style={{
+            flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            gap: 6, height: 36, borderRadius: 12,
+            backgroundColor: 'rgba(52,211,153,0.10)',
+            borderWidth: 1, borderColor: 'rgba(52,211,153,0.25)',
+          }}>
+          <Text style={{ fontSize: 14 }}>✅</Text>
+          <Text style={{
+            fontFamily: 'Nunito-SemiBold', fontSize: 12,
+            color: C.ok,
+          }}>Consommé</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onDelete(item.id, item.name)}
+          style={{
+            width: 36, height: 36, borderRadius: 12,
+            backgroundColor: 'rgba(255,68,68,0.10)',
+            borderWidth: 1, borderColor: 'rgba(255,68,68,0.25)',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+          <Text style={{ fontSize: 14 }}>🗑️</Text>
+        </Pressable>
+      </View>
     </Animated.View>
   );
 });
@@ -507,6 +539,7 @@ export const FoodTrackerScreen: React.FC = () => {
   const [sortKey, setSortKey] = useState('expiry');
   const [showSort, setShowSort] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   // Modal form
   const [mName, setMName] = useState('');
@@ -541,17 +574,16 @@ export const FoodTrackerScreen: React.FC = () => {
   }, [load]);
 
   const handleDelete = useCallback((id: string, name: string) => {
-    Alert.alert('Supprimer', `Supprimer "${name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive', onPress: async () => {
-          await supabase.from('food_items').delete().eq('id', id);
-          await cancelNotification(`food-expiry-${id}`);
-          load();
-        },
-      },
-    ]);
-  }, [load]);
+    setDeleteConfirm({ id, name });
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirm) return;
+    await supabase.from('food_items').delete().eq('id', deleteConfirm.id);
+    await cancelNotification(`food-expiry-${deleteConfirm.id}`);
+    setDeleteConfirm(null);
+    load();
+  }, [deleteConfirm, load]);
 
   // ─── Stats ────────────────────────────────────────────
   const stats = useMemo(() => {
@@ -670,7 +702,7 @@ export const FoodTrackerScreen: React.FC = () => {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            <Pressable style={{
+            <Pressable onPress={() => setModalVisible(true)} style={{
               width: 40, height: 40, borderRadius: 13,
               backgroundColor: 'rgba(245,166,35,0.10)',
               borderWidth: 1, borderColor: C.amberBorder,
@@ -685,7 +717,7 @@ export const FoodTrackerScreen: React.FC = () => {
                 <Path path="M19 4 L19 16" color={C.amber + 'CC'} style="stroke" strokeWidth={1} />
               </Canvas>
             </Pressable>
-            <Pressable style={{
+            <Pressable onPress={() => setShowSort(v => !v)} style={{
               width: 40, height: 40, borderRadius: 13,
               backgroundColor: 'rgba(245,166,35,0.10)',
               borderWidth: 1, borderColor: C.amberBorder,
@@ -987,6 +1019,97 @@ export const FoodTrackerScreen: React.FC = () => {
           </KeyboardAvoidingView>
         </View>
       )}
+
+      {/* ─── DELETE CONFIRMATION MODAL ─── */}
+      <Modal visible={!!deleteConfirm} transparent animationType="fade">
+        <View style={{
+          flex: 1, justifyContent: 'center', alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.75)',
+        }}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setDeleteConfirm(null)} />
+
+          <Animated.View entering={FadeIn.duration(250)} style={{
+            width: SW * 0.82, borderRadius: 28, overflow: 'hidden',
+          }}>
+            <Canvas style={{ position: 'absolute', width: SW * 0.82, height: 280 }}>
+              <Circle cx={SW * 0.41} cy={55} r={90} color="rgba(255,68,68,0.06)" />
+              <Circle cx={SW * 0.41} cy={55} r={45} color="rgba(255,68,68,0.04)" />
+            </Canvas>
+
+            <View style={{ backgroundColor: '#2A1600', padding: 28, alignItems: 'center', borderRadius: 28 }}>
+              {/* Trash icon */}
+              <View style={{
+                width: 64, height: 64, borderRadius: 32,
+                backgroundColor: 'rgba(255,68,68,0.12)',
+                borderWidth: 1.5, borderColor: 'rgba(255,68,68,0.25)',
+                alignItems: 'center', justifyContent: 'center',
+                marginBottom: 18,
+                shadowColor: '#FF4444', shadowRadius: 20, shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 0 }, elevation: 8,
+              }}>
+                <Text style={{ fontSize: 28 }}>🗑️</Text>
+              </View>
+
+              <Text style={{
+                fontSize: 20, fontFamily: 'Nunito-Bold',
+                color: C.textPrimary, marginBottom: 8, textAlign: 'center',
+              }}>Supprimer l'aliment</Text>
+
+              <Text style={{
+                fontSize: 14, fontFamily: 'DMSans-Regular',
+                color: 'rgba(255,255,255,0.55)', textAlign: 'center',
+                marginBottom: 6, lineHeight: 20,
+              }}>Êtes-vous sûr de vouloir supprimer</Text>
+              <Text style={{
+                fontSize: 15, fontFamily: 'Nunito-SemiBold',
+                color: C.amber, textAlign: 'center', marginBottom: 24,
+              }}>« {deleteConfirm?.name} »</Text>
+
+              <LinearGradient
+                colors={['transparent', 'rgba(255,68,68,0.25)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={{ height: 1, width: '100%', marginBottom: 20 }}
+              />
+
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <Pressable
+                  onPress={() => setDeleteConfirm(null)}
+                  style={{
+                    flex: 1, height: 50, borderRadius: 16,
+                    backgroundColor: C.bgSurface,
+                    borderWidth: 1, borderColor: C.amberBorder,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <Text style={{
+                    fontSize: 15, fontFamily: 'Nunito-Bold',
+                    color: C.textSecondary,
+                  }}>Annuler</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={confirmDelete}
+                  style={{ flex: 1, height: 50, borderRadius: 16, overflow: 'hidden' }}>
+                  <LinearGradient
+                    colors={['#FF5050', '#CC2020']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{
+                      flex: 1, alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 16,
+                      shadowColor: '#FF5050',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.5, shadowRadius: 12, elevation: 8,
+                    }}>
+                    <Text style={{
+                      fontSize: 15, fontFamily: 'Nunito-Bold', color: '#FFFFFF',
+                    }}>Supprimer</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
-  View, Text, ScrollView, Pressable, TextInput, Alert,
+  View, Text, ScrollView, Pressable, TextInput, Alert, Modal,
   Dimensions, StatusBar, KeyboardAvoidingView, Platform, Keyboard,
 } from 'react-native';
 import Animated, {
@@ -47,6 +47,18 @@ const C = {
   catHygiene: '#A78BFA',
   catDrinks:  '#87CEEB',
   catOther:   'rgba(255,255,255,0.5)',
+  catBakery:  '#D4A574',
+  catSnacks:  '#FFD93D',
+  catBaby:    '#FFB6C1',
+  catPets:    '#8B6914',
+  catCleaning:'#00CED1',
+  catCanned:  '#CD853F',
+  catPasta:   '#DEB887',
+  catSauces:  '#FF6347',
+  catSpices:  '#DAA520',
+  catSweets:  '#FF69B4',
+  catChips:   '#E8A317',
+  catApero:   '#FF7F50',
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -54,17 +66,33 @@ const C = {
 // ═══════════════════════════════════════════════════════════
 interface CatCfg { emoji: string; label: string; color: string }
 const CAT_CFG: Record<string, CatCfg> = {
-  dairy:      { emoji: '🥛', label: 'Laitages',  color: C.catDairy },
-  meat:       { emoji: '🥩', label: 'Viande',    color: C.catMeat },
-  vegetables: { emoji: '🥦', label: 'Légumes',   color: C.catVeg },
-  fruits:     { emoji: '🍎', label: 'Fruits',    color: C.catFruit },
-  frozen:     { emoji: '❄️', label: 'Surgelés',  color: C.catFrozen },
-  dry:        { emoji: '🌾', label: 'Épicerie',  color: C.catDry },
-  hygiene:    { emoji: '🧴', label: 'Hygiène',   color: C.catHygiene },
-  drinks:     { emoji: '🥤', label: 'Boissons',  color: C.catDrinks },
-  other:      { emoji: '📦', label: 'Autre',     color: C.catOther },
+  dairy:      { emoji: '🥛', label: 'Laitages',    color: C.catDairy },
+  meat:       { emoji: '🥩', label: 'Viande',      color: C.catMeat },
+  vegetables: { emoji: '🥦', label: 'Légumes',     color: C.catVeg },
+  fruits:     { emoji: '🍎', label: 'Fruits',      color: C.catFruit },
+  frozen:     { emoji: '❄️', label: 'Surgelés',    color: C.catFrozen },
+  dry:        { emoji: '🌾', label: 'Épicerie',    color: C.catDry },
+  bakery:     { emoji: '🥐', label: 'Boulangerie', color: C.catBakery },
+  pasta:      { emoji: '🍝', label: 'Pâtes & Riz', color: C.catPasta },
+  canned:     { emoji: '🥫', label: 'Conserves',   color: C.catCanned },
+  sauces:     { emoji: '🫕', label: 'Sauces',      color: C.catSauces },
+  spices:     { emoji: '🧂', label: 'Épices',      color: C.catSpices },
+  snacks:     { emoji: '🍪', label: 'Snacks',       color: C.catSnacks },
+  sweets:     { emoji: '🍬', label: 'Confiseries',  color: C.catSweets },
+  chips:      { emoji: '🍟', label: 'Chips',        color: C.catChips },
+  apero:      { emoji: '🧀', label: 'Apéro',       color: C.catApero },
+  drinks:     { emoji: '🥤', label: 'Boissons',     color: C.catDrinks },
+  hygiene:    { emoji: '🧴', label: 'Hygiène',     color: C.catHygiene },
+  cleaning:   { emoji: '🧹', label: 'Ménage',      color: C.catCleaning },
+  baby:       { emoji: '🍼', label: 'Bébé',        color: C.catBaby },
+  pets:       { emoji: '🐾', label: 'Animaux',     color: C.catPets },
+  other:      { emoji: '📦', label: 'Autre',       color: C.catOther },
 };
-const CAT_ORDER = ['dairy', 'meat', 'vegetables', 'fruits', 'frozen', 'dry', 'hygiene', 'drinks', 'other'];
+const CAT_ORDER = [
+  'dairy', 'meat', 'vegetables', 'fruits', 'frozen', 'dry', 'bakery', 'pasta',
+  'canned', 'sauces', 'spices', 'snacks', 'sweets', 'chips', 'apero',
+  'drinks', 'hygiene', 'cleaning', 'baby', 'pets', 'other',
+];
 const MODAL_CATS = CAT_ORDER;
 
 const UNITS = ['pièce(s)', 'g', 'kg', 'ml', 'L', 'barquette(s)'];
@@ -238,20 +266,26 @@ const ShoppingCard: React.FC<{
             </View>
           </View>
 
-          {/* Right icon */}
-          {item.checked ? (
+          {/* Right: delete button */}
+          {!item.checked ? (
+            <Pressable
+              onPress={() => onDelete(item.id, item.name)}
+              hitSlop={8}
+              style={{
+                width: 32, height: 32, borderRadius: 10,
+                backgroundColor: 'rgba(255,68,68,0.10)',
+                borderWidth: 1, borderColor: 'rgba(255,68,68,0.22)',
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              <Text style={{ fontSize: 14 }}>🗑️</Text>
+            </Pressable>
+          ) : (
             <Canvas style={{ width: 16, height: 16 }}>
               <Path
                 path="M3 8 L6.5 11.5 L13 4.5"
                 style="stroke" strokeWidth={2} strokeCap="round" color={C.checked}
               />
             </Canvas>
-          ) : (
-            <View style={{ gap: 2.5, opacity: 0.2 }}>
-              {[0, 1, 2].map(i => (
-                <View key={i} style={{ width: 14, height: 1.5, backgroundColor: '#FFF', borderRadius: 1 }} />
-              ))}
-            </View>
           )}
         </Pressable>
       </Animated.View>
@@ -397,6 +431,8 @@ export const ShoppingListScreen: React.FC = () => {
   const [items, setItems] = useState<ShoppingItemType[]>([]);
   const [filter, setFilter] = useState('all');
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [clearConfirm, setClearConfirm] = useState(false);
   const [quickText, setQuickText] = useState('');
   const [dlcSuggestions, setDlcSuggestions] = useState<FoodItemType[]>([]);
   const [dlcExpanded, setDlcExpanded] = useState(true);
@@ -517,25 +553,26 @@ export const ShoppingListScreen: React.FC = () => {
   }, [addItem]);
 
   const deleteItem = useCallback((id: string, name: string) => {
-    Alert.alert('Supprimer', `Supprimer "${name}" ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        await supabase.from('shopping_items').delete().eq('id', id);
-        setItems(prev => prev.filter(i => i.id !== id));
-      }},
-    ]);
+    setDeleteConfirm({ id, name });
   }, []);
 
+  const confirmDeleteItem = useCallback(async () => {
+    if (!deleteConfirm) return;
+    await supabase.from('shopping_items').delete().eq('id', deleteConfirm.id);
+    setItems(prev => prev.filter(i => i.id !== deleteConfirm.id));
+    setDeleteConfirm(null);
+  }, [deleteConfirm]);
+
   const clearChecked = useCallback(() => {
-    Alert.alert('Vider le chariot', `Supprimer ${checkedCount} article${checkedCount > 1 ? 's' : ''} coché${checkedCount > 1 ? 's' : ''} ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: async () => {
-        const ids = checkedItems.map(i => i.id);
-        await supabase.from('shopping_items').delete().in('id', ids);
-        load();
-      }},
-    ]);
-  }, [checkedItems, checkedCount, load]);
+    setClearConfirm(true);
+  }, []);
+
+  const confirmClearChecked = useCallback(async () => {
+    const ids = checkedItems.map(i => i.id);
+    await supabase.from('shopping_items').delete().in('id', ids);
+    setClearConfirm(false);
+    load();
+  }, [checkedItems, load]);
 
   // ─── FAB Animation ─────────────────────────────────────
   const fabScale = useSharedValue(0.3);
@@ -898,7 +935,7 @@ export const ShoppingListScreen: React.FC = () => {
               style={{
                 backgroundColor: C.bgMid, borderTopLeftRadius: 28, borderTopRightRadius: 28,
                 paddingHorizontal: 20, paddingTop: 12, paddingBottom: 30,
-                maxHeight: Dimensions.get('window').height * 0.7,
+                maxHeight: Dimensions.get('window').height * 0.85,
               }}
             >
               {/* Drag handle */}
@@ -976,26 +1013,149 @@ export const ShoppingListScreen: React.FC = () => {
                 </View>
 
                 {/* Submit */}
-                <Pressable onPress={modalAdd} style={{ marginTop: 24, borderRadius: 16, overflow: 'hidden' }}>
-                  <LinearGradient
-                    colors={['#F5A623', '#E8920A']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={{
-                      height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-                      shadowColor: C.amber, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-                    }}
-                  >
-                    <Text style={{ fontFamily: 'Nunito-Bold', fontSize: 16, color: C.bgDeep }}>
-                      Ajouter à la liste
-                    </Text>
-                  </LinearGradient>
-                </Pressable>
-                <View style={{ height: 16 }} />
+                {(() => {
+                  const canSubmit = mName.trim().length > 0 && mCat !== 'other';
+                  return (
+                    <Pressable
+                      onPress={canSubmit ? modalAdd : undefined}
+                      disabled={!canSubmit}
+                      style={{ marginTop: 24, borderRadius: 16, overflow: 'hidden', opacity: canSubmit ? 1 : 0.4 }}>
+                      <LinearGradient
+                        colors={canSubmit ? ['#F5A623', '#E8920A'] : ['#555', '#444']}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        style={{
+                          height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+                          shadowColor: canSubmit ? C.amber : 'transparent', shadowOpacity: 0.4, shadowRadius: 12, elevation: canSubmit ? 8 : 0,
+                        }}
+                      >
+                        <Text style={{ fontFamily: 'Nunito-Bold', fontSize: 16, color: canSubmit ? C.bgDeep : 'rgba(255,255,255,0.35)' }}>
+                          Ajouter à la liste
+                        </Text>
+                      </LinearGradient>
+                    </Pressable>
+                  );
+                })()}
+                <View style={{ height: 40 }} />
               </ScrollView>
             </Animated.View>
           </KeyboardAvoidingView>
         </View>
       )}
+
+      {/* ─── DELETE ITEM MODAL ─── */}
+      <Modal visible={!!deleteConfirm} transparent animationType="fade">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)' }}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setDeleteConfirm(null)} />
+          <Animated.View entering={FadeIn.duration(250)} style={{ width: SW * 0.82, borderRadius: 28, overflow: 'hidden' }}>
+            <Canvas style={{ position: 'absolute', width: SW * 0.82, height: 280 }}>
+              <RoundedRect x={0} y={0} width={SW * 0.82} height={280} r={28} color="#2A1600" />
+              <Circle cx={SW * 0.41} cy={50} r={90} color="rgba(255,80,80,0.06)" />
+              <Circle cx={SW * 0.41} cy={50} r={45} color="rgba(255,80,80,0.04)" />
+            </Canvas>
+            <View style={{ padding: 28, alignItems: 'center' }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 32,
+                backgroundColor: 'rgba(255,80,80,0.12)',
+                borderWidth: 1.5, borderColor: 'rgba(255,80,80,0.25)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+                shadowColor: '#FF5050', shadowRadius: 20, shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 0 }, elevation: 8,
+              }}>
+                <Text style={{ fontSize: 28 }}>🗑️</Text>
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: 'Nunito-Bold', color: C.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+                Supprimer l'article
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: 'DMSans-Regular', color: 'rgba(255,255,255,0.55)', textAlign: 'center', marginBottom: 6, lineHeight: 20 }}>
+                Êtes-vous sûr de vouloir supprimer
+              </Text>
+              <Text style={{ fontSize: 15, fontFamily: 'Nunito-SemiBold', color: C.amber, textAlign: 'center', marginBottom: 24 }}>
+                « {deleteConfirm?.name} »
+              </Text>
+              <LinearGradient colors={['transparent', 'rgba(255,80,80,0.25)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 1, width: '100%', marginBottom: 20 }} />
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <Pressable onPress={() => setDeleteConfirm(null)} style={{
+                  flex: 1, height: 50, borderRadius: 16, backgroundColor: C.bgSurface,
+                  borderWidth: 1, borderColor: C.amberBorder, alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 15, fontFamily: 'Nunito-Bold', color: C.textSecondary }}>Annuler</Text>
+                </Pressable>
+                <Pressable onPress={confirmDeleteItem} style={{ flex: 1, height: 50, borderRadius: 16, overflow: 'hidden' }}>
+                  <LinearGradient colors={['#FF5050', '#CC2020']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+                      shadowColor: '#FF5050', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 }}>
+                    <Text style={{ fontSize: 15, fontFamily: 'Nunito-Bold', color: '#FFFFFF' }}>Supprimer</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
+
+      {/* ─── CLEAR CART MODAL ─── */}
+      <Modal visible={clearConfirm} transparent animationType="fade">
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)' }}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setClearConfirm(false)} />
+          <Animated.View entering={FadeIn.duration(250)} style={{ width: SW * 0.85, borderRadius: 28, overflow: 'hidden' }}>
+            <Canvas style={{ position: 'absolute', width: SW * 0.85, height: 320 }}>
+              <RoundedRect x={0} y={0} width={SW * 0.85} height={320} r={28} color="#2A1600" />
+              <Circle cx={SW * 0.425} cy={55} r={100} color="rgba(245,166,35,0.05)" />
+              <Circle cx={SW * 0.425} cy={55} r={50} color="rgba(245,166,35,0.04)" />
+            </Canvas>
+            <View style={{ padding: 28, alignItems: 'center' }}>
+              {/* Cart icon */}
+              <View style={{
+                width: 68, height: 68, borderRadius: 34,
+                backgroundColor: 'rgba(245,166,35,0.10)',
+                borderWidth: 1.5, borderColor: 'rgba(245,166,35,0.25)',
+                alignItems: 'center', justifyContent: 'center', marginBottom: 18,
+                shadowColor: C.amber, shadowRadius: 20, shadowOpacity: 0.25,
+                shadowOffset: { width: 0, height: 0 }, elevation: 8,
+              }}>
+                <Text style={{ fontSize: 30 }}>🛒</Text>
+              </View>
+              <Text style={{ fontSize: 20, fontFamily: 'Nunito-Bold', color: C.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+                Vider le chariot
+              </Text>
+              <Text style={{ fontSize: 14, fontFamily: 'DMSans-Regular', color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 20, marginBottom: 6 }}>
+                Supprimer tous les articles cochés ?
+              </Text>
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                backgroundColor: 'rgba(245,166,35,0.08)', borderRadius: 12,
+                borderWidth: 1, borderColor: 'rgba(245,166,35,0.18)',
+                paddingHorizontal: 14, paddingVertical: 8, marginBottom: 24,
+              }}>
+                <Text style={{ fontSize: 14 }}>📦</Text>
+                <Text style={{ fontSize: 15, fontFamily: 'Nunito-SemiBold', color: C.amber }}>
+                  {checkedCount} article{checkedCount > 1 ? 's' : ''}
+                </Text>
+              </View>
+              <LinearGradient colors={['transparent', 'rgba(245,166,35,0.20)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ height: 1, width: '100%', marginBottom: 20 }} />
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <Pressable onPress={() => setClearConfirm(false)} style={{
+                  flex: 1, height: 50, borderRadius: 16, backgroundColor: C.bgSurface,
+                  borderWidth: 1, borderColor: C.amberBorder, alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Text style={{ fontSize: 15, fontFamily: 'Nunito-Bold', color: C.textSecondary }}>Annuler</Text>
+                </Pressable>
+                <Pressable onPress={confirmClearChecked} style={{ flex: 1, height: 50, borderRadius: 16, overflow: 'hidden' }}>
+                  <LinearGradient colors={['#F5A623', '#E8920A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+                      shadowColor: C.amber, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 }}>
+                    <Text style={{ fontSize: 15, fontFamily: 'Nunito-Bold', color: C.bgDeep }}>Tout vider</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
+        </View>
+      </Modal>
     </View>
   );
 };

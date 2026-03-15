@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useCalendarStore } from '../store/calendarStore';
-import type { Task, CalendarEvent, HouseholdMember } from '@appTypes/index';
+import type { Task, CalendarEvent, HouseholdMember, FoodItem } from '@appTypes/index';
 
 interface DayData {
   tasks: Task[];
@@ -16,7 +16,16 @@ interface MarkedDates {
   };
 }
 
-export const useCalendarData = (members: HouseholdMember[] = []) => {
+const foodExpiryColor = (dateStr: string): string => {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const exp = new Date(dateStr); exp.setHours(0, 0, 0, 0);
+  const diff = Math.floor((exp.getTime() - now.getTime()) / 86400000);
+  if (diff < 0) return '#FF4444';   // expired — red
+  if (diff <= 2) return '#FF8C00';  // urgent — orange
+  return '#F5A623';                 // warning — amber
+};
+
+export const useCalendarData = (members: HouseholdMember[] = [], foodItems: FoodItem[] = []) => {
   const { tasks, events, selectedDate } = useCalendarStore();
 
   // Find member by id (new: member.id) or user_id (old/created_by)
@@ -66,6 +75,19 @@ export const useCalendarData = (members: HouseholdMember[] = []) => {
       }
     }
 
+    // Regrouper les aliments par date de péremption
+    for (const food of foodItems) {
+      const date = food.expiry_date;
+      if (!marks[date]) marks[date] = { dots: [] };
+      if (!marks[date].dots) marks[date].dots = [];
+      if ((marks[date].dots?.length ?? 0) < 5) {
+        marks[date].dots?.push({
+          key: `food-${food.id}`,
+          color: foodExpiryColor(date),
+        });
+      }
+    }
+
     // Marquer la date sélectionnée
     if (marks[selectedDate]) {
       marks[selectedDate].selected = true;
@@ -78,7 +100,7 @@ export const useCalendarData = (members: HouseholdMember[] = []) => {
     }
 
     return marks;
-  }, [tasks, events, selectedDate, members]);
+  }, [tasks, events, foodItems, selectedDate, members]);
 
   return { dayData, markedDates, selectedDate };
 };

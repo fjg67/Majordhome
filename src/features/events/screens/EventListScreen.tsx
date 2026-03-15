@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, Pressable, TextInput, Modal, Switch,
-  Dimensions, StatusBar, Alert,
+  Dimensions, StatusBar,
 } from 'react-native';
 import Animated, {
   FadeInDown, FadeInUp, FadeIn,
@@ -122,6 +122,9 @@ export const EventListScreen: React.FC = () => {
   const [mStartM, setMStartM] = useState(0);
   const [mEndH, setMEndH] = useState(11);
   const [mEndM, setMEndM] = useState(0);
+  const [mAssignedMembers, setMAssignedMembers] = useState<string[]>([]);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; title: string } | null>(null);
 
   // FAB pulse
   const fabPulse = useSharedValue(0);
@@ -217,6 +220,16 @@ export const EventListScreen: React.FC = () => {
     return members.find(m => m.id === id) ?? members.find(m => m.user_id === id) ?? null;
   }, [members]);
 
+  // ─── CLOSE MODAL ───
+  const closeModal = useCallback(() => {
+    setShowModal(false);
+    setEditingEvent(null);
+    setMTitle(''); setMDesc(''); setMCategory('other');
+    setMLocation(''); setMAllDay(false); setMDateIdx(0); setMRecurrence('none');
+    setMStartH(10); setMStartM(0); setMEndH(11); setMEndM(0);
+    setMAssignedMembers([]);
+  }, []);
+
   // ─── CREATE EVENT ───
   const createEvent = useCallback(async () => {
     if (!mTitle.trim() || !household?.id) return;
@@ -245,28 +258,74 @@ export const EventListScreen: React.FC = () => {
       recurrence: mRecurrence,
       category: mCategory,
       location: mLocation.trim() || null,
+      assigned_members: mAssignedMembers.length > 0 ? mAssignedMembers : [],
     });
 
-    setShowModal(false);
-    setMTitle(''); setMDesc(''); setMCategory('other');
-    setMLocation(''); setMAllDay(false); setMDateIdx(0); setMRecurrence('none');
-    setMStartH(10); setMStartM(0); setMEndH(11); setMEndM(0);
+    closeModal();
     load();
-  }, [mTitle, mDesc, mCategory, mLocation, mAllDay, mDateIdx, mRecurrence, household?.id, user?.id, load]);
+  }, [mTitle, mDesc, mCategory, mLocation, mAllDay, mDateIdx, mRecurrence, mAssignedMembers, household?.id, user?.id, load, closeModal]);
+
+  // ─── OPEN EDIT ───
+  const openEdit = useCallback((ev: CalendarEvent) => {
+    setEditingEvent(ev);
+    setMTitle(ev.title);
+    setMDesc(ev.description ?? '');
+    setMCategory((ev.category ?? 'other') as EventCategory);
+    setMLocation(ev.location ?? '');
+    setMAllDay(ev.is_all_day);
+    setMRecurrence(ev.recurrence ?? 'none');
+    setMAssignedMembers(ev.assigned_members ?? []);
+    setMDateIdx(0); // not applicable for edit
+    const s = new Date(ev.start_at);
+    setMStartH(s.getHours()); setMStartM(s.getMinutes());
+    if (ev.end_at) {
+      const e = new Date(ev.end_at);
+      setMEndH(e.getHours()); setMEndM(e.getMinutes());
+    } else {
+      setMEndH(s.getHours() + 1); setMEndM(s.getMinutes());
+    }
+    setShowModal(true);
+  }, []);
+
+  // ─── UPDATE EVENT ───
+  const updateEvent = useCallback(async () => {
+    if (!editingEvent || !mTitle.trim()) return;
+    const orig = new Date(editingEvent.start_at);
+    const startDate = new Date(orig);
+    if (mAllDay) {
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      startDate.setHours(mStartH, mStartM, 0, 0);
+    }
+    const endDate = mAllDay ? null : (() => {
+      const d = new Date(startDate);
+      d.setHours(mEndH, mEndM, 0, 0);
+      return d;
+    })();
+    const catColor = CAT_CFG[mCategory].color;
+    await supabase.from('events').update({
+      title: mTitle.trim(),
+      description: mDesc.trim() || null,
+      start_at: startDate.toISOString(),
+      end_at: endDate ? endDate.toISOString() : null,
+      color: catColor,
+      is_all_day: mAllDay,
+      recurrence: mRecurrence,
+      category: mCategory,
+      location: mLocation.trim() || null,
+      assigned_members: mAssignedMembers.length > 0 ? mAssignedMembers : [],
+    }).eq('id', editingEvent.id);
+    closeModal();
+    load();
+  }, [editingEvent, mTitle, mDesc, mCategory, mLocation, mAllDay, mRecurrence, mAssignedMembers, mStartH, mStartM, mEndH, mEndM, load]);
 
   // ─── DELETE EVENT ───
-  const deleteEvent = useCallback((id: string, title: string) => {
-    Alert.alert('Supprimer', `Supprimer « ${title} » ?`, [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Supprimer', style: 'destructive',
-        onPress: async () => {
-          await supabase.from('events').delete().eq('id', id);
-          load();
-        },
-      },
-    ]);
-  }, [load]);
+  const confirmDelete = useCallback(async () => {
+    if (!deleteConfirm) return;
+    await supabase.from('events').delete().eq('id', deleteConfirm.id);
+    setDeleteConfirm(null);
+    load();
+  }, [deleteConfirm, load]);
 
   const counterText = events.length === 0
     ? 'Aucun événement à venir'
@@ -518,11 +577,14 @@ export const EventListScreen: React.FC = () => {
                   const catCfg = CAT_CFG[cat] ?? CAT_CFG.other;
                   const catColor = catCfg.color;
                   const creator = findMember(item.created_by);
+                  const assignedIds: string[] = item.assigned_members ?? [];
+                  const assignedMembers = assignedIds.length > 0
+                    ? assignedIds.map(id => findMember(id)).filter(Boolean) as NonNullable<ReturnType<typeof findMember>>[]
+                    : null;
 
                   return (
-                    <Pressable
+                    <View
                       key={item.id}
-                      onLongPress={() => deleteEvent(item.id, item.title)}
                       style={{
                         backgroundColor: item.is_all_day ? catColor + '14' : C.bgSurface,
                         borderRadius: 20, borderWidth: 1,
@@ -636,31 +698,57 @@ export const EventListScreen: React.FC = () => {
                               </View>
                             ) : null}
 
-                            {creator && (
+                            {(assignedMembers && assignedMembers.length > 0 ? assignedMembers : (creator ? [creator] : [])).length > 0 && (
                               <View style={{
                                 marginLeft: 'auto', flexDirection: 'row',
-                                alignItems: 'center', gap: 6,
+                                alignItems: 'center',
                               }}>
-                                <View style={{
-                                  width: 26, height: 26, borderRadius: 13,
-                                  backgroundColor: (creator.color ?? C.amber) + '33',
-                                  borderWidth: 1.5,
-                                  borderColor: creator.color ?? C.amber,
-                                  alignItems: 'center', justifyContent: 'center',
-                                }}>
-                                  <Text style={{
-                                    fontSize: 10, fontFamily: 'Nunito-Bold',
-                                    color: creator.color ?? C.amber,
+                                {(assignedMembers && assignedMembers.length > 0 ? assignedMembers : (creator ? [creator] : [])).map((mem, mi) => (
+                                  <View key={mem.id} style={{
+                                    width: 26, height: 26, borderRadius: 13,
+                                    backgroundColor: (mem.color ?? C.amber) + '33',
+                                    borderWidth: 1.5,
+                                    borderColor: mem.color ?? C.amber,
+                                    alignItems: 'center', justifyContent: 'center',
+                                    marginLeft: mi > 0 ? -8 : 0,
+                                    zIndex: 10 - mi,
                                   }}>
-                                    {creator.display_name.charAt(0).toUpperCase()}
-                                  </Text>
-                                </View>
+                                    <Text style={{
+                                      fontSize: 10, fontFamily: 'Nunito-Bold',
+                                      color: mem.color ?? C.amber,
+                                    }}>
+                                      {mem.display_name.charAt(0).toUpperCase()}
+                                    </Text>
+                                  </View>
+                                ))}
                               </View>
                             )}
+
+                            {/* Edit & Delete buttons */}
+                            <View style={{ flexDirection: 'row', gap: 8, marginLeft: assignedMembers || creator ? 10 : 'auto' }}>
+                              <Pressable onPress={() => openEdit(item)} hitSlop={8}
+                                style={{
+                                  width: 30, height: 30, borderRadius: 10,
+                                  backgroundColor: 'rgba(245,166,35,0.12)',
+                                  borderWidth: 1, borderColor: 'rgba(245,166,35,0.25)',
+                                  alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                <Text style={{ fontSize: 13 }}>✏️</Text>
+                              </Pressable>
+                              <Pressable onPress={() => setDeleteConfirm({ id: item.id, title: item.title })} hitSlop={8}
+                                style={{
+                                  width: 30, height: 30, borderRadius: 10,
+                                  backgroundColor: 'rgba(255,80,80,0.12)',
+                                  borderWidth: 1, borderColor: 'rgba(255,80,80,0.25)',
+                                  alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                <Text style={{ fontSize: 13 }}>🗑️</Text>
+                              </Pressable>
+                            </View>
                           </View>
                         </View>
                       </View>
-                    </Pressable>
+                    </View>
                   );
                 })}
               </Animated.View>
@@ -706,7 +794,7 @@ export const EventListScreen: React.FC = () => {
           flex: 1, justifyContent: 'flex-end',
           backgroundColor: 'rgba(0,0,0,0.6)',
         }}>
-          <Pressable style={{ flex: 1 }} onPress={() => setShowModal(false)} />
+          <Pressable style={{ flex: 1 }} onPress={closeModal} />
           <View style={{
             backgroundColor: C.bgMid,
             borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -725,7 +813,7 @@ export const EventListScreen: React.FC = () => {
               <Text style={{
                 fontSize: 22, fontFamily: 'Nunito-Bold',
                 color: C.textPrimary, marginBottom: 20,
-              }}>Nouvel événement</Text>
+              }}>{editingEvent ? 'Modifier l\'événement' : 'Nouvel événement'}</Text>
 
               {/* Title */}
               <Text style={labelStyle}>TITRE</Text>
@@ -978,6 +1066,51 @@ export const EventListScreen: React.FC = () => {
                 })}
               </View>
 
+              {/* Assigned members */}
+              <Text style={labelStyle}>POUR QUI</Text>
+              <View style={{
+                flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16,
+              }}>
+                {/* "Tout le monde" chip */}
+                <Pressable onPress={() => setMAssignedMembers([])}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
+                    backgroundColor: mAssignedMembers.length === 0 ? 'rgba(245,166,35,0.15)' : C.bgSurface,
+                    borderWidth: 1.5,
+                    borderColor: mAssignedMembers.length === 0 ? C.amber : C.border,
+                  }}>
+                  <Text style={{ fontSize: 14 }}>👨‍👩‍👧</Text>
+                  <Text style={{
+                    fontSize: 12, fontFamily: mAssignedMembers.length === 0 ? 'Nunito-Bold' : 'DMSans-Regular',
+                    color: mAssignedMembers.length === 0 ? C.amber : C.textMuted,
+                  }}>Tout le monde</Text>
+                </Pressable>
+                {/* Per-member chips */}
+                {members.map(m => {
+                  const sel = mAssignedMembers.includes(m.id);
+                  return (
+                    <Pressable key={m.id} onPress={() => {
+                      setMAssignedMembers(prev =>
+                        prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id],
+                      );
+                    }} style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 6,
+                      paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14,
+                      backgroundColor: sel ? (m.color ?? C.amber) + '22' : C.bgSurface,
+                      borderWidth: 1.5,
+                      borderColor: sel ? (m.color ?? C.amber) : C.border,
+                    }}>
+                      <Text style={{ fontSize: 14 }}>{m.avatar_emoji}</Text>
+                      <Text style={{
+                        fontSize: 12, fontFamily: sel ? 'Nunito-Bold' : 'DMSans-Regular',
+                        color: sel ? (m.color ?? C.amber) : C.textMuted,
+                      }}>{m.display_name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               {/* Location */}
               <Text style={labelStyle}>LIEU</Text>
               <TextInput
@@ -1021,7 +1154,7 @@ export const EventListScreen: React.FC = () => {
               </ScrollView>
 
               {/* Submit */}
-              <Pressable onPress={createEvent} style={{ borderRadius: 16, overflow: 'hidden' }}>
+              <Pressable onPress={editingEvent ? updateEvent : createEvent} style={{ borderRadius: 16, overflow: 'hidden' }}>
                 <LinearGradient
                   colors={['#F5A623', '#E8920A']}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -1035,11 +1168,114 @@ export const EventListScreen: React.FC = () => {
                 >
                   <Text style={{
                     fontSize: 16, fontFamily: 'Nunito-Bold', color: C.bgDeep,
-                  }}>Créer l'événement</Text>
+                  }}>{editingEvent ? 'Enregistrer' : 'Créer l\'événement'}</Text>
                 </LinearGradient>
               </Pressable>
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      {/* ─── DELETE CONFIRMATION MODAL ─── */}
+      <Modal visible={!!deleteConfirm} transparent animationType="fade">
+        <View style={{
+          flex: 1, justifyContent: 'center', alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.75)',
+        }}>
+          <Pressable style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            onPress={() => setDeleteConfirm(null)} />
+
+          <Animated.View entering={FadeIn.duration(250)} style={{
+            width: SW * 0.82, borderRadius: 28, overflow: 'hidden',
+          }}>
+            {/* Skia glow background */}
+            <Canvas style={{ position: 'absolute', width: SW * 0.82, height: 280 }}>
+              <RoundedRect x={0} y={0} width={SW * 0.82} height={280} r={28}
+                color="#2A1600" />
+              <Circle cx={SW * 0.41} cy={50} r={100}
+                color="rgba(255,80,80,0.06)" />
+              <Circle cx={SW * 0.41} cy={50} r={50}
+                color="rgba(255,80,80,0.04)" />
+            </Canvas>
+
+            <View style={{ padding: 28, alignItems: 'center' }}>
+              {/* Trash icon circle */}
+              <View style={{
+                width: 64, height: 64, borderRadius: 32,
+                backgroundColor: 'rgba(255,80,80,0.12)',
+                borderWidth: 1.5, borderColor: 'rgba(255,80,80,0.25)',
+                alignItems: 'center', justifyContent: 'center',
+                marginBottom: 18,
+                shadowColor: '#FF5050', shadowRadius: 20, shadowOpacity: 0.3,
+                shadowOffset: { width: 0, height: 0 }, elevation: 8,
+              }}>
+                <Text style={{ fontSize: 28 }}>🗑️</Text>
+              </View>
+
+              <Text style={{
+                fontSize: 20, fontFamily: 'Nunito-Bold',
+                color: C.textPrimary, marginBottom: 8, textAlign: 'center',
+              }}>Supprimer l'événement</Text>
+
+              <Text style={{
+                fontSize: 14, fontFamily: 'DMSans-Regular',
+                color: 'rgba(255,255,255,0.55)', textAlign: 'center',
+                marginBottom: 6, lineHeight: 20,
+              }}>Êtes-vous sûr de vouloir supprimer</Text>
+              <Text style={{
+                fontSize: 15, fontFamily: 'Nunito-SemiBold',
+                color: C.amber, textAlign: 'center',
+                marginBottom: 24,
+              }}>« {deleteConfirm?.title} »</Text>
+
+              {/* Separator */}
+              <LinearGradient
+                colors={['transparent', 'rgba(255,80,80,0.25)', 'transparent']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={{ height: 1, width: '100%', marginBottom: 20 }}
+              />
+
+              {/* Buttons */}
+              <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                <Pressable
+                  onPress={() => setDeleteConfirm(null)}
+                  style={{
+                    flex: 1, height: 50, borderRadius: 16,
+                    backgroundColor: C.bgSurface,
+                    borderWidth: 1, borderColor: C.amberBorder,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                  <Text style={{
+                    fontSize: 15, fontFamily: 'Nunito-Bold',
+                    color: C.textSecondary,
+                  }}>Annuler</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={confirmDelete}
+                  style={{
+                    flex: 1, height: 50, borderRadius: 16,
+                    overflow: 'hidden',
+                  }}>
+                  <LinearGradient
+                    colors={['#FF5050', '#CC2020']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={{
+                      flex: 1, alignItems: 'center', justifyContent: 'center',
+                      borderRadius: 16,
+                      shadowColor: '#FF5050',
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.5, shadowRadius: 12, elevation: 8,
+                    }}>
+                    <Text style={{
+                      fontSize: 15, fontFamily: 'Nunito-Bold',
+                      color: '#FFFFFF',
+                    }}>Supprimer</Text>
+                  </LinearGradient>
+                </Pressable>
+              </View>
+            </View>
+          </Animated.View>
         </View>
       </Modal>
     </View>

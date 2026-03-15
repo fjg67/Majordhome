@@ -1,0 +1,2926 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MajordHome — Votre foyer, synchronisé</title>
+  <meta name="description" content="MajordHome synchronise votre foyer en temps réel. Calendrier partagé, tâches, suivi des aliments et liste de courses — tout en un, pour vous et votre famille.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="MajordHome — Votre foyer, synchronisé">
+  <meta property="og:description" content="L'app qui synchronise votre foyer en temps réel.">
+  <meta property="og:image" content="https://majordhome.app/og-image.png">
+  <meta property="og:url" content="https://majordhome.app">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MajordHome">
+  <meta name="twitter:description" content="Votre foyer, synchronisé 🏠">
+  <meta name="theme-color" content="#1A0E00">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%231A0E00'/><polygon points='16,3 2,16 30,16' fill='%23F5A623'/><rect x='5' y='16' width='22' height='13' rx='2' fill='%233A2200'/><rect x='12' y='21' width='8' height='8' rx='3 3 0 0' fill='%23F5A623'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+ul, ol { list-style: none; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+button { border: none; background: none; font: inherit; cursor: pointer; }
+
+/* ═══════════════════════════════════════════
+   CSS TOKENS
+   ═══════════════════════════════════════════ */
+:root {
+  --bg-deep: #1A0E00;
+  --bg-mid: #261400;
+  --bg-surface: #2E1A00;
+  --bg-elevated: #3A2200;
+  --amber: #F5A623;
+  --amber-warm: #E8920A;
+  --amber-deep: #C4720A;
+  --amber-glow: rgba(245, 166, 35, 0.35);
+  --amber-soft: rgba(245, 166, 35, 0.12);
+  --amber-border: rgba(245, 166, 35, 0.22);
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.60);
+  --text-muted: rgba(255, 255, 255, 0.32);
+  --teal: #4ECDC4;
+  --coral: #FF6B6B;
+  --violet: #A78BFA;
+  --green: #34D399;
+  --salmon: #FFA07A;
+}
+
+/* ═══════════════════════════════════════════
+   GRAIN OVERLAY
+   ═══════════════════════════════════════════ */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ═══════════════════════════════════════════
+   CUSTOM CURSOR
+   ═══════════════════════════════════════════ */
+* { cursor: none; }
+.cursor {
+  width: 8px; height: 8px;
+  background: var(--amber);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 10001;
+  transform: translate(-50%, -50%);
+  transition: transform 0.08s ease, width 0.2s ease, height 0.2s ease;
+  box-shadow: 0 0 14px rgba(245,166,35,0.7);
+  mix-blend-mode: screen;
+}
+.cursor-ring {
+  width: 36px; height: 36px;
+  border: 1.5px solid rgba(245,166,35,0.45);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  transform: translate(-50%, -50%);
+  transition: all 0.12s ease;
+}
+.cursor.hovering { width: 14px; height: 14px; }
+.cursor-ring.hovering { width: 52px; height: 52px; border-color: rgba(245,166,35,0.6); }
+.cursor.clicking { transform: translate(-50%,-50%) scale(0.7); }
+
+/* ═══════════════════════════════════════════
+   READING PROGRESS BAR
+   ═══════════════════════════════════════════ */
+.progress-bar {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  width: 0%;
+  background: linear-gradient(90deg, var(--amber), var(--amber-warm));
+  z-index: 10002;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px rgba(245,166,35,0.5);
+}
+
+/* ═══════════════════════════════════════════
+   PARTICLE CANVAS
+   ═══════════════════════════════════════════ */
+#particles {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════
+   ORBS (background decorative)
+   ═══════════════════════════════════════════ */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb--1 {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(245,166,35,0.14), transparent 70%);
+  top: -200px; left: -100px;
+  animation: orb-float 8s ease-in-out infinite alternate;
+}
+.orb--2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(255,107,107,0.09), transparent 70%);
+  top: 300px; right: -100px;
+  animation: orb-float 11s ease-in-out infinite alternate-reverse;
+}
+.orb--3 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(78,205,196,0.07), transparent 70%);
+  bottom: -100px; left: 30%;
+  animation: orb-float 9s ease-in-out infinite alternate;
+}
+@keyframes orb-float {
+  0%   { transform: translate(0,0) scale(1); }
+  100% { transform: translate(40px,-30px) scale(1.1); }
+}
+
+/* ═══════════════════════════════════════════
+   NAVBAR
+   ═══════════════════════════════════════════ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 500;
+  padding: 0 40px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  background: rgba(26,14,0,0);
+  border-bottom: 1px solid rgba(245,166,35,0);
+  transition: background 0.4s ease, border-color 0.4s ease, backdrop-filter 0.4s ease;
+}
+.nav.scrolled {
+  background: rgba(26,14,0,0.88);
+  border-bottom-color: rgba(245,166,35,0.14);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.nav__inner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+}
+.nav__logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #FFFFFF;
+  letter-spacing: -0.5px;
+}
+.nav__links {
+  display: flex;
+  list-style: none;
+  margin: 0; padding: 0;
+  gap: 32px;
+  margin-left: auto;
+}
+.nav__links a {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.55);
+  text-decoration: none;
+  transition: color 0.2s ease;
+  position: relative;
+}
+.nav__links a::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0; right: 0;
+  height: 1.5px;
+  background: var(--amber);
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+  transform-origin: left;
+}
+.nav__links a:hover { color: var(--amber); }
+.nav__links a:hover::after { transform: scaleX(1); }
+
+.nav__cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--bg-deep);
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--amber), var(--amber-warm));
+  border-radius: 12px;
+  padding: 10px 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+  white-space: nowrap;
+}
+.nav__cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(245,166,35,0.50);
+}
+
+.nav__burger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  margin-left: auto;
+}
+.nav__burger span {
+  display: block;
+  width: 22px; height: 2px;
+  background: #fff;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+.nav__burger.active span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
+.nav__burger.active span:nth-child(2) { opacity: 0; }
+.nav__burger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px, -5px); }
+
+/* Mobile menu overlay */
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,14,0,0.96);
+  backdrop-filter: blur(24px);
+  z-index: 499;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.mobile-menu.open { opacity: 1; pointer-events: all; }
+.mobile-menu a {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 28px;
+  color: rgba(255,255,255,0.7);
+  transition: color 0.2s ease;
+}
+.mobile-menu a:hover { color: var(--amber); }
+
+/* ═══════════════════════════════════════════
+   HERO
+   ═══════════════════════════════════════════ */
+.hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 120px 40px 80px;
+  position: relative;
+  z-index: 1;
+}
+.hero__content { position: relative; z-index: 2; }
+
+.hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  background: rgba(245,166,35,0.09);
+  border: 1px solid rgba(245,166,35,0.25);
+  border-radius: 30px;
+  padding: 8px 16px;
+  margin-bottom: 28px;
+  transition: border-color 0.3s ease;
+}
+.hero__badge:hover { border-color: rgba(245,166,35,0.5); }
+.hero__badge-dot {
+  width: 7px; height: 7px;
+  background: var(--amber);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(245,166,35,0.9);
+  animation: pulse-dot 2s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.hero__badge-arrow {
+  color: var(--amber);
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+.hero__badge:hover .hero__badge-arrow { transform: translateX(4px); }
+
+.hero__title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: clamp(52px, 6vw, 80px);
+  line-height: 1.0;
+  letter-spacing: -3px;
+  color: #FFFFFF;
+  margin: 0 0 24px;
+}
+.gradient-text {
+  background: linear-gradient(135deg, #F5A623 0%, #FFD700 40%, #E8920A 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+@keyframes shimmer {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.hero__subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 18px;
+  line-height: 1.75;
+  color: rgba(255,255,255,0.55);
+  max-width: 500px;
+  margin-bottom: 40px;
+}
+.hero__ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  border-radius: 16px;
+  padding: 16px 28px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.btn--primary {
+  background: linear-gradient(135deg, var(--amber), var(--amber-warm));
+  color: var(--bg-deep);
+  box-shadow: 0 6px 24px rgba(245,166,35,0.40);
+}
+.btn--primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -60px;
+  width: 50px; height: 100%;
+  background: rgba(255,255,255,0.25);
+  transform: skewX(-15deg);
+  animation: btn-shimmer 3s ease-in-out infinite;
+}
+@keyframes btn-shimmer {
+  0%   { left: -60px; opacity: 1; }
+  60%  { left: 110%; opacity: 1; }
+  100% { left: 110%; opacity: 0; }
+}
+.btn--primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(245,166,35,0.55);
+}
+.btn__badge {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--amber);
+  background: rgba(245,166,35,0.20);
+  border: 1px solid rgba(245,166,35,0.35);
+  border-radius: 8px;
+  padding: 2px 8px;
+  margin-left: 4px;
+  letter-spacing: 0.5px;
+}
+.btn--ghost {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.75);
+  border: 1px solid rgba(255,255,255,0.14);
+}
+.btn--ghost:hover {
+  background: rgba(255,255,255,0.10);
+  border-color: rgba(245,166,35,0.30);
+  color: #FFFFFF;
+  transform: translateY(-2px);
+}
+
+.hero__trust {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  flex-wrap: wrap;
+}
+.hero__trust-dot { color: rgba(245,166,35,0.40); }
+
+/* ── PHONE MOCKUP ── */
+.hero__mockup {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2;
+}
+.phone {
+  position: relative;
+  filter: drop-shadow(0 40px 80px rgba(0,0,0,0.6));
+}
+.phone--main {
+  animation: phone-float 4s ease-in-out infinite alternate;
+  z-index: 2;
+}
+.phone--secondary {
+  position: absolute;
+  right: -60px; bottom: -40px;
+  transform: scale(0.72) rotate(6deg);
+  opacity: 0.75;
+  z-index: 1;
+  animation: phone-float-sec 5s ease-in-out infinite alternate-reverse;
+}
+@keyframes phone-float {
+  0%   { transform: translateY(0px); }
+  100% { transform: translateY(-16px); }
+}
+@keyframes phone-float-sec {
+  0%   { transform: scale(0.72) rotate(6deg) translateY(0); }
+  100% { transform: scale(0.72) rotate(6deg) translateY(-14px); }
+}
+.phone__frame {
+  width: 260px;
+  background: #0D0700;
+  border-radius: 36px;
+  border: 2px solid rgba(245,166,35,0.35);
+  padding: 12px;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 0 1px rgba(255,255,255,0.04), 0 30px 60px rgba(0,0,0,0.5);
+}
+.phone__screen {
+  background: var(--bg-deep);
+  border-radius: 26px;
+  overflow: hidden;
+  height: 500px;
+}
+.phone__notch {
+  position: absolute;
+  top: 18px; left: 50%;
+  transform: translateX(-50%);
+  width: 80px; height: 24px;
+  background: #0D0700;
+  border-radius: 12px;
+  z-index: 10;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+/* Mock screen content */
+.mock-screen {
+  padding: 36px 14px 14px;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+}
+.mock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.mock-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #FFFFFF;
+}
+.mock-members { display: flex; gap: 5px; }
+.mock-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.mock-calendar {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(245,166,35,0.16);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+.mock-month {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--amber);
+  text-align: center;
+  margin-bottom: 8px;
+}
+.mock-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.mock-day {
+  font-size: 8px;
+  color: rgba(255,255,255,0.35);
+  padding: 3px 0;
+  border-radius: 4px;
+  position: relative;
+}
+.mock-day--header { color: rgba(255,255,255,0.20); font-weight: 600; font-size: 7px; }
+.mock-day--today { background: rgba(245,166,35,0.25); color: var(--amber); font-weight: 700; }
+.mock-day--event::after {
+  content: '';
+  position: absolute;
+  bottom: 1px; left: 50%;
+  transform: translateX(-50%);
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+.mock-section-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin: 10px 0 6px;
+}
+.mock-event {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(245,166,35,0.14);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mock-event-bar { width: 3px; height: 30px; border-radius: 2px; flex-shrink: 0; }
+.mock-event-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  color: #FFFFFF;
+}
+.mock-event-time {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 9px;
+  color: rgba(255,255,255,0.40);
+  margin-top: 2px;
+}
+.mock-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.mock-checkbox {
+  width: 18px; height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(245,166,35,0.35);
+  flex-shrink: 0;
+}
+.mock-checkbox--checked {
+  background: var(--green);
+  border-color: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--bg-deep);
+  font-weight: 700;
+}
+.mock-task-title { font-family: 'DM Sans', sans-serif; font-size: 11px; color: #FFFFFF; }
+.mock-task-title--done { color: rgba(255,255,255,0.35); text-decoration: line-through; }
+.mock-task-sub {
+  font-size: 9px;
+  color: rgba(255,255,255,0.40);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.mock-dot-sm { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.mock-priority {
+  width: 3px; height: 20px;
+  background: var(--coral);
+  border-radius: 2px;
+  margin-left: auto;
+  box-shadow: 0 0 6px rgba(255,107,107,0.6);
+}
+
+/* Stats mock screen */
+.mock-screen--stats {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 44px;
+}
+.mock-stats-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+.mock-stat-labels {
+  display: flex;
+  gap: 12px;
+  font-size: 9px;
+  color: rgba(255,255,255,0.6);
+}
+.mock-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 80%;
+  font-size: 8px;
+  color: rgba(255,255,255,0.35);
+}
+.mock-bar {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+/* Float cards */
+.float-card {
+  position: absolute;
+  background: rgba(42,26,0,0.90);
+  border: 1px solid rgba(245,166,35,0.28);
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  white-space: nowrap;
+  z-index: 3;
+}
+.float-card__title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  color: #FFFFFF;
+}
+.float-card__sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  margin-top: 2px;
+}
+.float-card--1 { top: 60px; left: -80px; animation: fc1 3s ease-in-out infinite alternate; }
+.float-card--2 { bottom: 120px; left: -70px; animation: fc2 4s ease-in-out infinite alternate; }
+.float-card--3 { bottom: 50px; right: -70px; animation: fc3 3.5s ease-in-out infinite alternate; }
+@keyframes fc1 { 0%{transform:translateY(0) rotate(-1deg)} 100%{transform:translateY(-8px) rotate(1deg)} }
+@keyframes fc2 { 0%{transform:translateY(0) rotate(1deg)}  100%{transform:translateY(-10px) rotate(-1deg)} }
+@keyframes fc3 { 0%{transform:translateY(0) rotate(-0.5deg)} 100%{transform:translateY(-6px) rotate(0.5deg)} }
+
+/* ═══════════════════════════════════════════
+   TRUSTED BAR
+   ═══════════════════════════════════════════ */
+.trusted-bar {
+  border-top: 1px solid rgba(245,166,35,0.10);
+  border-bottom: 1px solid rgba(245,166,35,0.10);
+  padding: 20px 40px;
+  background: rgba(245,166,35,0.03);
+  position: relative;
+  z-index: 1;
+}
+.trusted-bar__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.trusted-bar__label {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(245,166,35,0.55);
+  white-space: nowrap;
+}
+.trusted-bar__items { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; }
+.trusted-item { font-family: 'DM Sans', sans-serif; font-size: 14px; color: rgba(255,255,255,0.50); }
+.trusted-sep { color: rgba(245,166,35,0.30); }
+
+/* ═══════════════════════════════════════════
+   SECTION HEADERS (shared)
+   ═══════════════════════════════════════════ */
+.eyebrow {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+.section-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: clamp(36px, 5vw, 60px);
+  letter-spacing: -2px;
+  line-height: 1.1;
+  color: #FFFFFF;
+  margin: 0 0 20px;
+}
+.section-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+  color: rgba(255,255,255,0.50);
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ═══════════════════════════════════════════
+   FEATURES GRID
+   ═══════════════════════════════════════════ */
+.features {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 100px 40px;
+  position: relative;
+  z-index: 1;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.feature-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s ease;
+}
+.feature-card--large { grid-column: span 2; }
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 16px; right: 16px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+.feature-card::after {
+  content: '';
+  position: absolute;
+  left: 0; top: 16px; bottom: 16px; width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+  opacity: 0.8;
+}
+.feature-card:hover {
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.35);
+}
+.feature-card__icon { font-size: 36px; margin-bottom: 20px; display: block; }
+.feature-card h3 {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  color: #FFFFFF;
+  margin: 0 0 12px;
+  letter-spacing: -0.3px;
+}
+.feature-card p {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: rgba(255,255,255,0.52);
+  line-height: 1.7;
+  margin: 0 0 20px;
+}
+.feature-card__tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.feature-card__tags span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-radius: 8px;
+  padding: 3px 10px;
+  letter-spacing: 0.5px;
+}
+.feature-card__realtime-indicator {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  margin-top: 16px;
+}
+.realtime-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  margin-right: 6px;
+  box-shadow: 0 0 8px rgba(52,211,153,0.9);
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════
+   FEATURE SPOTLIGHTS
+   ═══════════════════════════════════════════ */
+.spotlight {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+.spotlight--reverse { direction: rtl; }
+.spotlight--reverse > * { direction: ltr; }
+.spotlight__text {}
+.spotlight__eyebrow {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.spotlight__title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: clamp(32px, 4vw, 48px);
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  color: #FFFFFF;
+  margin: 0 0 20px;
+}
+.spotlight__desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 16px;
+  color: rgba(255,255,255,0.52);
+  line-height: 1.75;
+  margin-bottom: 28px;
+}
+.spotlight__features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.spotlight__feature {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.65);
+}
+.spotlight__feature-icon {
+  width: 32px; height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.spotlight__visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.spotlight__phone {
+  animation: phone-float 4.5s ease-in-out infinite alternate;
+}
+.spotlight__phone .phone__frame { width: 240px; }
+.spotlight__phone .phone__screen { height: 460px; }
+
+/* Spotlight mock screens */
+.mock-food-screen { padding: 36px 14px 14px; font-family: 'DM Sans', sans-serif; }
+.mock-food-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+.mock-food-emoji { font-size: 20px; }
+.mock-food-name { font-size: 11px; color: #fff; font-weight: 500; }
+.mock-food-date { font-size: 9px; margin-top: 2px; }
+.mock-food-date--ok { color: var(--green); }
+.mock-food-date--warn { color: var(--amber); }
+.mock-food-date--danger { color: var(--coral); }
+.mock-food-qty {
+  margin-left: auto;
+  font-size: 9px;
+  color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.mock-shopping-screen { padding: 36px 14px 14px; font-family: 'DM Sans', sans-serif; }
+.mock-shopping-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.mock-shopping-check {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(245,166,35,0.35);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mock-shopping-check--done {
+  background: var(--green);
+  border-color: var(--green);
+  font-size: 9px;
+  color: var(--bg-deep);
+  font-weight: 700;
+}
+.mock-shopping-name { font-size: 11px; color: #fff; }
+.mock-shopping-name--done { color: rgba(255,255,255,0.3); text-decoration: line-through; }
+
+/* ═══════════════════════════════════════════
+   REALTIME SECTION
+   ═══════════════════════════════════════════ */
+.realtime {
+  padding: 100px 40px;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+.realtime__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+.realtime__visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 60px;
+  margin-top: 60px;
+  position: relative;
+}
+.realtime__phone {
+  width: 180px;
+}
+.realtime__phone .phone__frame { width: 180px; }
+.realtime__phone .phone__screen { height: 340px; }
+.realtime__phone .phone__notch { width: 60px; height: 18px; top: 14px; }
+
+.realtime__connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.realtime__line {
+  width: 120px; height: 2px;
+  background: linear-gradient(90deg, var(--amber), var(--teal));
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.realtime__line::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -30px;
+  width: 30px; height: 100%;
+  background: rgba(255,255,255,0.5);
+  animation: sync-pulse 1.5s ease-in-out infinite;
+}
+@keyframes sync-pulse {
+  0% { left: -30px; }
+  100% { left: 120px; }
+}
+.realtime__sync-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.realtime__user-label {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.realtime__user-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Mini mock for realtime phones */
+.mock-realtime {
+  padding: 28px 10px 10px;
+  font-family: 'DM Sans', sans-serif;
+}
+.mock-rt-notif {
+  background: rgba(245,166,35,0.10);
+  border: 1px solid rgba(245,166,35,0.25);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: notif-in 0.4s ease;
+}
+@keyframes notif-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.mock-rt-notif__icon { font-size: 16px; }
+.mock-rt-notif__text { font-size: 9px; color: rgba(255,255,255,0.7); }
+.mock-rt-notif__text strong { color: #fff; }
+
+/* ═══════════════════════════════════════════
+   STATS SECTION
+   ═══════════════════════════════════════════ */
+.stats-section {
+  border-top: 1px solid rgba(245,166,35,0.10);
+  border-bottom: 1px solid rgba(245,166,35,0.10);
+  background: rgba(245,166,35,0.03);
+  padding: 60px 40px;
+  position: relative;
+  z-index: 1;
+}
+.stats-section__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px;
+  text-align: center;
+}
+.stat-item__value {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: 52px;
+  letter-spacing: -2px;
+  color: var(--amber);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.stat-item__label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.45);
+}
+
+/* ═══════════════════════════════════════════
+   SCREENSHOTS CAROUSEL
+   ═══════════════════════════════════════════ */
+.screenshots {
+  padding: 100px 0;
+  position: relative;
+  z-index: 1;
+}
+.screenshots .section-header { padding: 0 40px; }
+.screenshots-track { position: relative; overflow: hidden; }
+.screenshots-scroll {
+  display: flex;
+  gap: 24px;
+  padding: 40px 80px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.screenshots-scroll::-webkit-scrollbar { display: none; }
+.screen-card {
+  flex-shrink: 0;
+  scroll-snap-align: center;
+  text-align: center;
+}
+.screen-card__phone {
+  width: 220px;
+  background: #0D0700;
+  border-radius: 32px;
+  border: 2px solid rgba(245,166,35,0.30);
+  padding: 10px;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 30px 60px rgba(0,0,0,0.6);
+  transition: transform 0.4s ease;
+  position: relative;
+  overflow: hidden;
+}
+.screen-card:hover .screen-card__phone { transform: scale(1.03); }
+.screen-card__phone::before {
+  content: '';
+  position: absolute;
+  top: 8px; left: 50%;
+  transform: translateX(-50%);
+  width: 60px; height: 18px;
+  background: #0D0700;
+  border-radius: 10px;
+  z-index: 10;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.screen-card__content {
+  background: var(--bg-deep);
+  border-radius: 24px;
+  height: 420px;
+  overflow: hidden;
+  padding: 32px 12px 12px;
+  font-family: 'DM Sans', sans-serif;
+}
+.screen-card__label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.50);
+  margin-top: 16px;
+}
+
+/* Fades */
+.screenshots-fade {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 120px;
+  pointer-events: none;
+  z-index: 2;
+}
+.screenshots-fade--left { left: 0; background: linear-gradient(to right, var(--bg-deep), transparent); }
+.screenshots-fade--right { right: 0; background: linear-gradient(to left, var(--bg-deep), transparent); }
+
+/* Dots */
+.screenshots-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.20);
+  border: none;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+.dot--active {
+  width: 24px;
+  border-radius: 4px;
+  background: var(--amber);
+  box-shadow: 0 0 8px rgba(245,166,35,0.6);
+}
+
+/* ═══════════════════════════════════════════
+   TESTIMONIALS
+   ═══════════════════════════════════════════ */
+.testimonials {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 100px 40px;
+  position: relative;
+  z-index: 1;
+}
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.testimonial-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  padding: 32px;
+  transition: all 0.4s ease;
+  position: relative;
+}
+.testimonial-card:hover {
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+}
+.testimonial-card__stars {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: var(--amber);
+}
+.testimonial-card__text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.7;
+  margin-bottom: 24px;
+  font-style: italic;
+}
+.testimonial-card__author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.testimonial-card__avatar {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.testimonial-card__name {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+.testimonial-card__role {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.40);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════
+   DOWNLOAD SECTION
+   ═══════════════════════════════════════════ */
+.download {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 120px 40px;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+.download__orb {
+  position: absolute;
+  width: 500px; height: 500px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(245,166,35,0.14), transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+.download__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: rgba(245,166,35,0.10);
+  border: 1px solid rgba(245,166,35,0.28);
+  border-radius: 20px;
+  padding: 8px 18px;
+  margin-bottom: 28px;
+}
+.download__title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 900;
+  font-size: clamp(40px, 6vw, 72px);
+  letter-spacing: -2.5px;
+  line-height: 1.05;
+  color: #FFFFFF;
+  margin: 0 0 24px;
+}
+.download__desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 17px;
+  color: rgba(255,255,255,0.52);
+  line-height: 1.75;
+  max-width: 520px;
+  margin: 0 auto 48px;
+}
+.download__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  background: linear-gradient(135deg, var(--amber) 0%, var(--amber-warm) 100%);
+  color: var(--bg-deep);
+  text-decoration: none;
+  border-radius: 24px;
+  padding: 20px 40px;
+  font-family: 'Outfit', sans-serif;
+  transition: all 0.35s ease;
+  box-shadow: 0 8px 32px rgba(245,166,35,0.45), 0 2px 8px rgba(245,166,35,0.20);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.download__btn::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -80px;
+  width: 60px; height: 100%;
+  background: rgba(255,255,255,0.30);
+  transform: skewX(-15deg);
+  animation: btn-shimmer 3s ease-in-out 1s infinite;
+}
+.download__btn:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 48px rgba(245,166,35,0.55), 0 4px 16px rgba(245,166,35,0.25);
+}
+.download__btn-label {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.3px;
+  display: block;
+}
+.download__btn-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  opacity: 0.65;
+  display: block;
+  margin-top: 2px;
+}
+.download__btn-arrow {
+  flex-shrink: 0;
+  animation: arrow-bounce 1.5s ease-in-out infinite;
+}
+@keyframes arrow-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(4px); }
+}
+.download__safety {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.35);
+  flex-wrap: wrap;
+  margin-bottom: 48px;
+}
+.install-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.install-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(245,166,35,0.16);
+  border-radius: 16px;
+  padding: 14px 20px;
+  text-align: left;
+}
+.install-step__num {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: rgba(245,166,35,0.15);
+  border: 1px solid rgba(245,166,35,0.30);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.install-step__text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.60);
+}
+.install-step__text strong { color: #FFFFFF; font-weight: 600; }
+.install-arrow { font-size: 18px; color: rgba(245,166,35,0.40); }
+
+/* ═══════════════════════════════════════════
+   FOOTER
+   ═══════════════════════════════════════════ */
+.footer {
+  border-top: 1px solid rgba(245,166,35,0.10);
+  padding: 60px 40px 40px;
+  position: relative;
+  z-index: 1;
+}
+.footer__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 32px;
+}
+.footer__name {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: -0.5px;
+}
+.footer__tagline {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.40);
+}
+.footer__links {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+.footer__links a {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: rgba(255,255,255,0.50);
+  transition: color 0.2s ease;
+}
+.footer__links a:hover { color: var(--amber); }
+.footer__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.footer__bottom span {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.30);
+}
+.footer__badges { display: flex; gap: 8px; }
+.footer__badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--amber);
+  background: rgba(245,166,35,0.10);
+  border: 1px solid rgba(245,166,35,0.22);
+  border-radius: 8px;
+  padding: 3px 10px;
+  letter-spacing: 0.5px;
+}
+
+/* ═══════════════════════════════════════════
+   REDUCED MOTION
+   ═══════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .hero__mockup, .phone--main, .phone--secondary,
+  .float-card, .spotlight__phone { animation: none !important; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .hero { grid-template-columns: 1fr; text-align: center; }
+  .hero__subtitle { margin: 0 auto 40px; }
+  .hero__ctas { justify-content: center; }
+  .hero__trust { justify-content: center; }
+  .hero__mockup { margin-top: 60px; }
+  .float-card { display: none; }
+  .phone--secondary { display: none; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .feature-card--large { grid-column: span 2; }
+  .spotlight { grid-template-columns: 1fr; gap: 40px; text-align: center; }
+  .spotlight--reverse { direction: ltr; }
+  .spotlight__features { align-items: center; }
+  .realtime__visual { gap: 30px; }
+  .realtime__line { width: 60px; }
+  .testimonials-grid { grid-template-columns: 1fr 1fr; }
+  .stats-section__inner { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .nav { padding: 0 20px; }
+  .nav__links { display: none; }
+  .nav__cta { display: none; }
+  .nav__burger { display: flex; }
+  .hero { padding: 100px 20px 60px; }
+  .hero__title { font-size: 40px; letter-spacing: -1.5px; }
+  .features { padding: 60px 20px; }
+  .features-grid { grid-template-columns: 1fr; }
+  .feature-card--large { grid-column: span 1; }
+  .spotlight { padding: 40px 20px; gap: 30px; }
+  .spotlight__title { font-size: 32px; }
+  .realtime { padding: 60px 20px; }
+  .realtime__visual { flex-direction: column; gap: 20px; }
+  .realtime__connector { flex-direction: row; }
+  .realtime__line { width: 2px; height: 60px; }
+  .install-steps { flex-direction: column; }
+  .install-arrow { transform: rotate(90deg); }
+  .stats-section__inner { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .stat-item__value { font-size: 38px; }
+  .screenshots-scroll { padding: 20px 40px; }
+  .testimonials { padding: 60px 20px; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .download { padding: 80px 20px; }
+  .download__btn { padding: 16px 24px; gap: 12px; }
+  .download__title { font-size: 36px; }
+  .footer { padding: 40px 20px 30px; }
+  .cursor, .cursor-ring { display: none !important; }
+  * { cursor: auto !important; }
+}
+
+@media (max-width: 480px) {
+  .hero__title { font-size: 34px; letter-spacing: -1px; }
+  .hero__subtitle { font-size: 15px; }
+  .hero__mockup .phone__frame { width: 220px; }
+  .hero__mockup .phone__screen { height: 420px; }
+  .section-title { font-size: 30px; }
+  .trusted-bar { padding: 16px 20px; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ═══════ CURSOR ═══════ -->
+<div class="cursor"></div>
+<div class="cursor-ring"></div>
+
+<!-- ═══════ PARTICLES CANVAS ═══════ -->
+<canvas id="particles"></canvas>
+
+<!-- ═══════ READING PROGRESS ═══════ -->
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- ═══════ GRAIN ═══════ -->
+<div class="grain" id="grain"></div>
+
+<!-- ═══════ ORBS ═══════ -->
+<div class="orb orb--1"></div>
+<div class="orb orb--2"></div>
+<div class="orb orb--3"></div>
+
+<!-- ═══════ MOBILE MENU ═══════ -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#features" data-mobile-link>Fonctionnalités</a>
+  <a href="#screenshots" data-mobile-link>Aperçu</a>
+  <a href="#download" data-mobile-link>Télécharger</a>
+  <a href="../privacy-policy/" data-mobile-link>Confidentialité</a>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     NAVBAR
+     ═══════════════════════════════════════════ -->
+<nav class="nav" id="navbar">
+  <div class="nav__inner">
+    <a href="#" class="nav__logo" data-hover>
+      <svg width="30" height="30" viewBox="0 0 32 32">
+        <rect width="32" height="32" rx="9" fill="rgba(245,166,35,0.15)" stroke="rgba(245,166,35,0.35)" stroke-width="1"/>
+        <polygon points="16,4 3,15 29,15" fill="#F5A623"/>
+        <rect x="5" y="15" width="22" height="12" rx="2" fill="#3A2200"/>
+        <rect x="12" y="20" width="8" height="7" rx="3 3 0 0" fill="#F5A623"/>
+        <rect x="22" y="6" width="4" height="7" rx="1" fill="#E8920A"/>
+      </svg>
+      <span>MajordHome</span>
+    </a>
+    <ul class="nav__links">
+      <li><a href="#features" data-hover>Fonctionnalités</a></li>
+      <li><a href="#screenshots" data-hover>Aperçu</a></li>
+      <li><a href="#download" data-hover>Télécharger</a></li>
+      <li><a href="../privacy-policy/" data-hover>Confidentialité</a></li>
+    </ul>
+    <a href="#download" class="nav__cta" data-hover>
+      <span>📥</span> Télécharger l'app
+    </a>
+    <button class="nav__burger" id="burger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════
+     HERO
+     ═══════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="hero__content">
+    <div class="hero__badge" data-reveal data-hover>
+      <span class="hero__badge-dot"></span>
+      Nouvelle version disponible — v1.0
+      <span class="hero__badge-arrow">→</span>
+    </div>
+
+    <h1 class="hero__title" data-reveal data-reveal-delay="100">
+      Votre foyer,<br>
+      <span class="gradient-text">synchronisé.</span>
+    </h1>
+
+    <p class="hero__subtitle" data-reveal data-reveal-delay="200">
+      MajordHome centralise la vie de votre foyer en temps réel.
+      Calendrier partagé, tâches, aliments, courses — tout synchronisé
+      instantanément entre tous les membres.
+    </p>
+
+    <div class="hero__ctas" data-reveal data-reveal-delay="300">
+      <a href="#download" class="btn btn--primary" data-hover>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Télécharger l'APK Android
+        <span class="btn__badge">Gratuit</span>
+      </a>
+      <a href="#features" class="btn btn--ghost" data-hover>
+        Voir les fonctionnalités
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+    <div class="hero__trust" data-reveal data-reveal-delay="400">
+      <span>✓ Synchronisation temps réel</span>
+      <span class="hero__trust-dot">·</span>
+      <span>✓ Données en Europe</span>
+      <span class="hero__trust-dot">·</span>
+      <span>✓ 100% gratuit</span>
+    </div>
+  </div>
+
+  <div class="hero__mockup" data-reveal data-reveal-delay="200">
+    <!-- Phone principal -->
+    <div class="phone phone--main">
+      <div class="phone__frame">
+        <div class="phone__screen">
+          <div class="mock-screen">
+            <div class="mock-header">
+              <div class="mock-title">La maison de Eva et Hugo</div>
+              <div class="mock-members">
+                <span class="mock-dot" style="background:#FF6B6B"></span>
+                <span class="mock-dot" style="background:#4ECDC4"></span>
+              </div>
+            </div>
+            <div class="mock-calendar">
+              <div class="mock-month">Mars 2026</div>
+              <div class="mock-days" id="mockCalendar"></div>
+            </div>
+            <div class="mock-section-title">ÉVÉNEMENTS</div>
+            <div class="mock-event">
+              <div class="mock-event-bar" style="background:#FF6B6B"></div>
+              <div>
+                <div class="mock-event-title">Anniversaire de Marie</div>
+                <div class="mock-event-time">10:00 → 11:00 · Paris</div>
+              </div>
+              <div class="mock-dot" style="background:#FF6B6B;margin-left:auto"></div>
+            </div>
+            <div class="mock-section-title">TÂCHES</div>
+            <div class="mock-task">
+              <div class="mock-checkbox"></div>
+              <div>
+                <div class="mock-task-title">Faire manger les chats</div>
+                <div class="mock-task-sub">
+                  <span class="mock-dot-sm" style="background:#4ECDC4"></span>
+                  Hugo
+                </div>
+              </div>
+              <div class="mock-priority"></div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox mock-checkbox--checked">✓</div>
+              <div>
+                <div class="mock-task-title mock-task-title--done">Faire la vaisselle</div>
+                <div class="mock-task-sub">
+                  <span class="mock-dot-sm" style="background:#FF6B6B"></span>
+                  par Eva
+                </div>
+              </div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox"></div>
+              <div>
+                <div class="mock-task-title">Sortir les poubelles</div>
+                <div class="mock-task-sub">
+                  <span class="mock-dot-sm" style="background:#4ECDC4"></span>
+                  Hugo
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone__notch"></div>
+      </div>
+    </div>
+
+    <!-- Phone secondaire -->
+    <div class="phone phone--secondary">
+      <div class="phone__frame">
+        <div class="phone__screen">
+          <div class="mock-screen mock-screen--stats">
+            <div class="mock-stats-title">📊 Statistiques</div>
+            <svg width="80" height="80" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="8"/>
+              <circle cx="40" cy="40" r="30" fill="none" stroke="#F5A623" stroke-width="8" stroke-dasharray="113 75" stroke-dashoffset="28" stroke-linecap="round"/>
+              <circle cx="40" cy="40" r="30" fill="none" stroke="#4ECDC4" stroke-width="8" stroke-dasharray="56 132" stroke-dashoffset="-85" stroke-linecap="round"/>
+            </svg>
+            <div class="mock-stat-labels">
+              <span style="color:#FF6B6B">● Eva 60%</span>
+              <span style="color:#4ECDC4">● Hugo 40%</span>
+            </div>
+            <div class="mock-bar-row"><span>Lun</span><div class="mock-bar" style="width:70%;background:#F5A623"></div></div>
+            <div class="mock-bar-row"><span>Mar</span><div class="mock-bar" style="width:40%;background:#4ECDC4"></div></div>
+            <div class="mock-bar-row"><span>Mer</span><div class="mock-bar" style="width:90%;background:#FF6B6B"></div></div>
+            <div class="mock-bar-row"><span>Jeu</span><div class="mock-bar" style="width:55%;background:#A78BFA"></div></div>
+            <div class="mock-bar-row"><span>Ven</span><div class="mock-bar" style="width:65%;background:#34D399"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating cards -->
+    <div class="float-card float-card--1">
+      <span>✅</span>
+      <div>
+        <div class="float-card__title">Eva a coché</div>
+        <div class="float-card__sub">"Faire la vaisselle"</div>
+      </div>
+    </div>
+    <div class="float-card float-card--2">
+      <span>🔔</span>
+      <div>
+        <div class="float-card__title">Expire demain</div>
+        <div class="float-card__sub">Yaourt · 5 pièces</div>
+      </div>
+    </div>
+    <div class="float-card float-card--3">
+      <span>🛒</span>
+      <div>
+        <div class="float-card__title">Liste complète !</div>
+        <div class="float-card__sub">8/8 articles cochés</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     TRUSTED BAR
+     ═══════════════════════════════════════════ -->
+<div class="trusted-bar">
+  <div class="trusted-bar__inner">
+    <span class="trusted-bar__label">Conçu pour</span>
+    <div class="trusted-bar__items">
+      <div class="trusted-item">👫 Les couples</div>
+      <div class="trusted-sep">·</div>
+      <div class="trusted-item">👨‍👩‍👧‍👦 Les familles</div>
+      <div class="trusted-sep">·</div>
+      <div class="trusted-item">🏠 Les colocations</div>
+      <div class="trusted-sep">·</div>
+      <div class="trusted-item">📱 Android</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FEATURES GRID
+     ═══════════════════════════════════════════ -->
+<section class="features" id="features">
+  <div class="section-header" data-reveal>
+    <div class="eyebrow">✦ Fonctionnalités</div>
+    <h2 class="section-title">
+      Tout ce dont votre<br>
+      <span class="gradient-text">foyer a besoin</span>
+    </h2>
+    <p class="section-desc">
+      Six modules conçus pour simplifier la vie quotidienne,
+      synchronisés en temps réel entre tous les membres.
+    </p>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card feature-card--large" data-reveal style="--accent:#F5A623">
+      <div class="feature-card__icon">📅</div>
+      <h3>Calendrier partagé</h3>
+      <p>Un calendrier commun visible par tous les membres. Créez des événements, assignez des participants, recevez des rappels.</p>
+      <div class="feature-card__tags">
+        <span>Temps réel</span>
+        <span>Rappels</span>
+        <span>Récurrence</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-reveal data-reveal-delay="100" style="--accent:#FF6B6B">
+      <div class="feature-card__icon">✅</div>
+      <h3>Tâches & Balance</h3>
+      <p>Assignez des tâches, suivez qui fait quoi. Graphiques de balance pour une répartition équitable.</p>
+      <div class="feature-card__tags">
+        <span>Balance</span>
+        <span>Stats</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-reveal data-reveal-delay="150" style="--accent:#34D399">
+      <div class="feature-card__icon">🥑</div>
+      <h3>Suivi DLC</h3>
+      <p>Suivez les dates de péremption de vos aliments. Alertes avant expiration, zéro gaspillage.</p>
+      <div class="feature-card__tags">
+        <span>Alertes</span>
+        <span>Anti-gaspi</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-reveal data-reveal-delay="200" style="--accent:#4ECDC4">
+      <div class="feature-card__icon">🛒</div>
+      <h3>Liste de courses</h3>
+      <p>Liste partagée en temps réel. Suggestions automatiques depuis vos DLC urgentes.</p>
+      <div class="feature-card__tags">
+        <span>Suggestions</span>
+        <span>Collaboratif</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-reveal data-reveal-delay="250" style="--accent:#A78BFA">
+      <div class="feature-card__icon">📊</div>
+      <h3>Statistiques</h3>
+      <p>Graphiques de productivité, top contributeur, historique des tâches et bilan alimentaire hebdo.</p>
+      <div class="feature-card__tags">
+        <span>Graphiques</span>
+        <span>Bilan hebdo</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-reveal data-reveal-delay="300" style="--accent:#FFD700">
+      <div class="feature-card__icon">⚡</div>
+      <h3>Temps réel</h3>
+      <p>Toutes les actions sont synchronisées instantanément. Eva coche une tâche → Hugo la voit en temps réel.</p>
+      <div class="feature-card__realtime-indicator">
+        <span class="realtime-dot"></span>
+        Live sync actif
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SPOTLIGHT 1 — CALENDRIER
+     ═══════════════════════════════════════════ -->
+<section class="spotlight" id="spotlight-calendar">
+  <div class="spotlight__text" data-reveal>
+    <div class="spotlight__eyebrow" style="color:#F5A623">
+      📅 Calendrier partagé
+    </div>
+    <h2 class="spotlight__title">
+      Un calendrier pour<br>
+      <span class="gradient-text">tout le foyer</span>
+    </h2>
+    <p class="spotlight__desc">
+      Visualisez les événements de chaque membre en un coup d'œil.
+      Créez des événements récurrents, assignez des participants
+      et recevez des notifications de rappel — le tout synchronisé instantanément.
+    </p>
+    <div class="spotlight__features">
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.25)">🔄</div>
+        Événements récurrents automatiques
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.25)">🔔</div>
+        Rappels personnalisables
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(78,205,196,0.12);border:1px solid rgba(78,205,196,0.25)">👥</div>
+        Code couleur par membre
+      </div>
+    </div>
+  </div>
+  <div class="spotlight__visual" data-reveal data-reveal-delay="150">
+    <div class="spotlight__phone phone">
+      <div class="phone__frame">
+        <div class="phone__screen">
+          <div class="mock-screen">
+            <div class="mock-header">
+              <div class="mock-title">📅 Calendrier</div>
+              <div class="mock-members">
+                <span class="mock-dot" style="background:#FF6B6B"></span>
+                <span class="mock-dot" style="background:#4ECDC4"></span>
+              </div>
+            </div>
+            <div class="mock-calendar" style="margin-bottom:16px">
+              <div class="mock-month">Mars 2026</div>
+              <div class="mock-days" id="mockCalendar2"></div>
+            </div>
+            <div class="mock-section-title">15 MARS</div>
+            <div class="mock-event">
+              <div class="mock-event-bar" style="background:#FF6B6B"></div>
+              <div>
+                <div class="mock-event-title">Anniversaire de Marie</div>
+                <div class="mock-event-time">10:00 → 11:00</div>
+              </div>
+            </div>
+            <div class="mock-event">
+              <div class="mock-event-bar" style="background:#4ECDC4"></div>
+              <div>
+                <div class="mock-event-title">Courses Carrefour</div>
+                <div class="mock-event-time">16:00 → 17:00</div>
+              </div>
+            </div>
+            <div class="mock-event">
+              <div class="mock-event-bar" style="background:#A78BFA"></div>
+              <div>
+                <div class="mock-event-title">Dîner famille</div>
+                <div class="mock-event-time">19:30 → 22:00</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone__notch"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SPOTLIGHT 2 — TÂCHES
+     ═══════════════════════════════════════════ -->
+<section class="spotlight spotlight--reverse" id="spotlight-tasks">
+  <div class="spotlight__text" data-reveal>
+    <div class="spotlight__eyebrow" style="color:#FF6B6B">
+      ✅ Tâches & Balance
+    </div>
+    <h2 class="spotlight__title">
+      Répartition<br>
+      <span class="gradient-text">équitable</span>
+    </h2>
+    <p class="spotlight__desc">
+      Fini les disputes sur qui fait quoi. Assignez des tâches avec priorité,
+      suivez la complétion en temps réel et consultez les graphiques de balance
+      pour voir la répartition des efforts.
+    </p>
+    <div class="spotlight__features">
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.25)">📊</div>
+        Graphiques de balance
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(167,139,250,0.12);border:1px solid rgba(167,139,250,0.25)">🏆</div>
+        Classement contributeurs
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.25)">✨</div>
+        Animation de complétion
+      </div>
+    </div>
+  </div>
+  <div class="spotlight__visual" data-reveal data-reveal-delay="150">
+    <div class="spotlight__phone phone">
+      <div class="phone__frame">
+        <div class="phone__screen">
+          <div class="mock-screen">
+            <div class="mock-header">
+              <div class="mock-title">✅ Tâches</div>
+            </div>
+            <div class="mock-section-title">AUJOURD'HUI · 5 tâches</div>
+            <div class="mock-task">
+              <div class="mock-checkbox"></div>
+              <div>
+                <div class="mock-task-title">Faire manger les chats</div>
+                <div class="mock-task-sub"><span class="mock-dot-sm" style="background:#4ECDC4"></span> Hugo · Haute</div>
+              </div>
+              <div class="mock-priority"></div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox"></div>
+              <div>
+                <div class="mock-task-title">Passer l'aspirateur</div>
+                <div class="mock-task-sub"><span class="mock-dot-sm" style="background:#FF6B6B"></span> Eva · Moyenne</div>
+              </div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox mock-checkbox--checked">✓</div>
+              <div>
+                <div class="mock-task-title mock-task-title--done">Faire la vaisselle</div>
+                <div class="mock-task-sub"><span class="mock-dot-sm" style="background:#FF6B6B"></span> Eva</div>
+              </div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox mock-checkbox--checked">✓</div>
+              <div>
+                <div class="mock-task-title mock-task-title--done">Sortir poubelles</div>
+                <div class="mock-task-sub"><span class="mock-dot-sm" style="background:#4ECDC4"></span> Hugo</div>
+              </div>
+            </div>
+            <div class="mock-task">
+              <div class="mock-checkbox"></div>
+              <div>
+                <div class="mock-task-title">Étendre le linge</div>
+                <div class="mock-task-sub"><span class="mock-dot-sm" style="background:#4ECDC4"></span> Hugo · Basse</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone__notch"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SPOTLIGHT 3 — ALIMENTS
+     ═══════════════════════════════════════════ -->
+<section class="spotlight" id="spotlight-food">
+  <div class="spotlight__text" data-reveal>
+    <div class="spotlight__eyebrow" style="color:#34D399">
+      🥑 Suivi DLC & Aliments
+    </div>
+    <h2 class="spotlight__title">
+      Zéro<br>
+      <span class="gradient-text">gaspillage</span>
+    </h2>
+    <p class="spotlight__desc">
+      Scannez vos aliments, enregistrez les dates de péremption et recevez
+      des alertes avant qu'ils n'expirent. Les aliments urgents sont automatiquement
+      suggérés dans votre liste de courses.
+    </p>
+    <div class="spotlight__features">
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.25)">🔔</div>
+        Alertes DLC automatiques
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(245,166,35,0.12);border:1px solid rgba(245,166,35,0.25)">🛒</div>
+        Suggestions liste de courses
+      </div>
+      <div class="spotlight__feature">
+        <div class="spotlight__feature-icon" style="background:rgba(255,160,122,0.12);border:1px solid rgba(255,160,122,0.25)">📋</div>
+        Catégories d'aliments
+      </div>
+    </div>
+  </div>
+  <div class="spotlight__visual" data-reveal data-reveal-delay="150">
+    <div class="spotlight__phone phone">
+      <div class="phone__frame">
+        <div class="phone__screen">
+          <div class="mock-food-screen">
+            <div class="mock-header">
+              <div class="mock-title">🥑 Aliments</div>
+            </div>
+            <div class="mock-section-title" style="color:#FF6B6B">⚠️ EXPIRE BIENTÔT</div>
+            <div class="mock-food-item" style="border-color:rgba(255,107,107,0.25)">
+              <div class="mock-food-emoji">🥛</div>
+              <div>
+                <div class="mock-food-name">Lait</div>
+                <div class="mock-food-date mock-food-date--danger">Expire demain</div>
+              </div>
+              <div class="mock-food-qty">1L</div>
+            </div>
+            <div class="mock-food-item" style="border-color:rgba(245,166,35,0.25)">
+              <div class="mock-food-emoji">🧀</div>
+              <div>
+                <div class="mock-food-name">Yaourt nature</div>
+                <div class="mock-food-date mock-food-date--warn">Expire dans 3j</div>
+              </div>
+              <div class="mock-food-qty">×5</div>
+            </div>
+            <div class="mock-section-title" style="color:#34D399">✓ EN STOCK</div>
+            <div class="mock-food-item">
+              <div class="mock-food-emoji">🥚</div>
+              <div>
+                <div class="mock-food-name">Oeufs</div>
+                <div class="mock-food-date mock-food-date--ok">Expire dans 12j</div>
+              </div>
+              <div class="mock-food-qty">×6</div>
+            </div>
+            <div class="mock-food-item">
+              <div class="mock-food-emoji">🍗</div>
+              <div>
+                <div class="mock-food-name">Poulet</div>
+                <div class="mock-food-date mock-food-date--ok">Expire dans 5j</div>
+              </div>
+              <div class="mock-food-qty">500g</div>
+            </div>
+            <div class="mock-food-item">
+              <div class="mock-food-emoji">🥬</div>
+              <div>
+                <div class="mock-food-name">Salade</div>
+                <div class="mock-food-date mock-food-date--warn">Expire dans 2j</div>
+              </div>
+              <div class="mock-food-qty">×1</div>
+            </div>
+          </div>
+        </div>
+        <div class="phone__notch"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     REALTIME SECTION
+     ═══════════════════════════════════════════ -->
+<section class="realtime" id="realtime">
+  <div class="realtime__inner">
+    <div class="section-header" data-reveal>
+      <div class="eyebrow">⚡ Temps réel</div>
+      <h2 class="section-title">
+        Synchronisé<br>
+        <span class="gradient-text">instantanément</span>
+      </h2>
+      <p class="section-desc">
+        Chaque action est partagée en temps réel.
+        Eva coche une tâche à la maison — Hugo le voit instantanément au bureau.
+      </p>
+    </div>
+
+    <div class="realtime__visual" data-reveal data-reveal-delay="200">
+      <!-- Phone Eva -->
+      <div>
+        <div class="realtime__phone phone">
+          <div class="phone__frame">
+            <div class="phone__screen">
+              <div class="mock-realtime">
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">✅</div>
+                  <div class="mock-rt-notif__text"><strong>Vous</strong> avez coché "Vaisselle"</div>
+                </div>
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">📅</div>
+                  <div class="mock-rt-notif__text"><strong>Vous</strong> avez ajouté "Dîner"</div>
+                </div>
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">🛒</div>
+                  <div class="mock-rt-notif__text"><strong>Hugo</strong> a ajouté "Pain"</div>
+                </div>
+              </div>
+            </div>
+            <div class="phone__notch"></div>
+          </div>
+        </div>
+        <div class="realtime__user-label">
+          <span class="realtime__user-dot" style="background:#FF6B6B"></span>
+          Eva
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="realtime__connector">
+        <div class="realtime__line"></div>
+        <div class="realtime__sync-label">
+          <span class="realtime-dot"></span>
+          SYNC
+        </div>
+        <div class="realtime__line"></div>
+      </div>
+
+      <!-- Phone Hugo -->
+      <div>
+        <div class="realtime__phone phone">
+          <div class="phone__frame">
+            <div class="phone__screen">
+              <div class="mock-realtime">
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">✅</div>
+                  <div class="mock-rt-notif__text"><strong>Eva</strong> a coché "Vaisselle"</div>
+                </div>
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">📅</div>
+                  <div class="mock-rt-notif__text"><strong>Eva</strong> a ajouté "Dîner"</div>
+                </div>
+                <div class="mock-rt-notif">
+                  <div class="mock-rt-notif__icon">🛒</div>
+                  <div class="mock-rt-notif__text"><strong>Vous</strong> avez ajouté "Pain"</div>
+                </div>
+              </div>
+            </div>
+            <div class="phone__notch"></div>
+          </div>
+        </div>
+        <div class="realtime__user-label">
+          <span class="realtime__user-dot" style="background:#4ECDC4"></span>
+          Hugo
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     STATS SECTION
+     ═══════════════════════════════════════════ -->
+<section class="stats-section" data-reveal>
+  <div class="stats-section__inner">
+    <div class="stat-item" data-count="100">
+      <div class="stat-item__value"><span class="counter">0</span>%</div>
+      <div class="stat-item__label">Gratuit pour toujours</div>
+    </div>
+    <div class="stat-item" data-count="0">
+      <div class="stat-item__value"><span class="counter">0</span></div>
+      <div class="stat-item__label">Données vendues</div>
+    </div>
+    <div class="stat-item" data-count="256">
+      <div class="stat-item__value"><span class="counter">0</span>-bit</div>
+      <div class="stat-item__label">Chiffrement AES</div>
+    </div>
+    <div class="stat-item" data-count="6">
+      <div class="stat-item__value"><span class="counter">0</span></div>
+      <div class="stat-item__label">Modules intégrés</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     SCREENSHOTS CAROUSEL
+     ═══════════════════════════════════════════ -->
+<section class="screenshots" id="screenshots">
+  <div class="section-header" data-reveal>
+    <div class="eyebrow">✦ Aperçu</div>
+    <h2 class="section-title">
+      Chaque écran,<br>
+      <span class="gradient-text">pensé pour vous</span>
+    </h2>
+  </div>
+
+  <div class="screenshots-track">
+    <div class="screenshots-scroll" id="screenshotsScroll">
+
+      <!-- Screen 1: Accueil -->
+      <div class="screen-card">
+        <div class="screen-card__phone">
+          <div class="screen-card__content">
+            <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:#fff;margin-bottom:8px">🏠 Accueil</div>
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(245,166,35,0.16);border-radius:12px;padding:8px;margin-bottom:8px">
+              <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:9px;color:#F5A623;text-align:center;margin-bottom:6px">Mars 2026</div>
+              <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:1px;text-align:center;font-size:7px;color:rgba(255,255,255,0.3)">
+                <span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span>
+                <span></span><span></span><span></span><span></span><span></span><span></span><span>1</span>
+                <span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+                <span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span style="background:rgba(245,166,35,0.3);border-radius:3px;color:#F5A623;font-weight:700">15</span>
+              </div>
+            </div>
+            <div style="font-size:8px;color:#F5A623;letter-spacing:1px;font-weight:600;margin-bottom:4px">ÉVÉNEMENTS</div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:6px 8px;margin-bottom:4px;display:flex;align-items:center;gap:6px">
+              <div style="width:2px;height:20px;background:#FF6B6B;border-radius:2px"></div>
+              <div><div style="font-size:9px;color:#fff">Anniversaire Marie</div><div style="font-size:7px;color:rgba(255,255,255,0.3)">10:00</div></div>
+            </div>
+            <div style="font-size:8px;color:#F5A623;letter-spacing:1px;font-weight:600;margin:6px 0 4px">TÂCHES</div>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+              <div style="width:14px;height:14px;border:1.5px solid rgba(245,166,35,0.3);border-radius:4px"></div>
+              <span style="font-size:9px;color:#fff">Nourrir les chats</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0">
+              <div style="width:14px;height:14px;background:#34D399;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#1A0E00;font-weight:700">✓</div>
+              <span style="font-size:9px;color:rgba(255,255,255,0.3);text-decoration:line-through">Vaisselle</span>
+            </div>
+          </div>
+        </div>
+        <div class="screen-card__label">🏠 Accueil & Calendrier</div>
+      </div>
+
+      <!-- Screen 2: Tâches -->
+      <div class="screen-card">
+        <div class="screen-card__phone">
+          <div class="screen-card__content">
+            <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:#fff;margin-bottom:10px">✅ Tâches</div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <div style="background:rgba(245,166,35,0.15);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:3px 10px;font-size:9px;color:#F5A623;font-weight:600">Toutes</div>
+              <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:3px 10px;font-size:9px;color:rgba(255,255,255,0.4)">Mes tâches</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:10px;border-left:3px solid #FF6B6B">
+                <div style="width:16px;height:16px;border:1.5px solid rgba(245,166,35,0.3);border-radius:4px"></div>
+                <div><div style="font-size:9px;color:#fff">Aspirateur salon</div><div style="font-size:7px;color:rgba(255,255,255,0.3)">Eva · Haute</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:10px">
+                <div style="width:16px;height:16px;border:1.5px solid rgba(245,166,35,0.3);border-radius:4px"></div>
+                <div><div style="font-size:9px;color:#fff">Courses Carrefour</div><div style="font-size:7px;color:rgba(255,255,255,0.3)">Hugo · Moyenne</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:10px;opacity:0.5">
+                <div style="width:16px;height:16px;background:#34D399;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#1A0E00;font-weight:700">✓</div>
+                <div><div style="font-size:9px;color:rgba(255,255,255,0.3);text-decoration:line-through">Vaisselle</div><div style="font-size:7px;color:rgba(255,255,255,0.2)">Eva</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:8px;background:rgba(255,255,255,0.04);border-radius:10px;opacity:0.5">
+                <div style="width:16px;height:16px;background:#34D399;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#1A0E00;font-weight:700">✓</div>
+                <div><div style="font-size:9px;color:rgba(255,255,255,0.3);text-decoration:line-through">Poubelles</div><div style="font-size:7px;color:rgba(255,255,255,0.2)">Hugo</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-card__label">✅ Gestion des tâches</div>
+      </div>
+
+      <!-- Screen 3: Aliments -->
+      <div class="screen-card">
+        <div class="screen-card__phone">
+          <div class="screen-card__content">
+            <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:#fff;margin-bottom:10px">🥑 Aliments</div>
+            <div style="font-size:8px;color:#FF6B6B;letter-spacing:1px;font-weight:600;margin-bottom:4px">⚠️ EXPIRE BIENTÔT</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:10px;margin-bottom:4px">
+              <span style="font-size:16px">🥛</span>
+              <div><div style="font-size:9px;color:#fff">Lait</div><div style="font-size:7px;color:#FF6B6B">Demain</div></div>
+              <span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.3)">1L</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:10px;margin-bottom:8px">
+              <span style="font-size:16px">🧀</span>
+              <div><div style="font-size:9px;color:#fff">Yaourt</div><div style="font-size:7px;color:#F5A623">3 jours</div></div>
+              <span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.3)">×5</span>
+            </div>
+            <div style="font-size:8px;color:#34D399;letter-spacing:1px;font-weight:600;margin-bottom:4px">✓ EN STOCK</div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:4px">
+              <span style="font-size:16px">🥚</span>
+              <div><div style="font-size:9px;color:#fff">Oeufs</div><div style="font-size:7px;color:#34D399">12 jours</div></div>
+              <span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.3)">×6</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,0.04);border-radius:10px">
+              <span style="font-size:16px">🍗</span>
+              <div><div style="font-size:9px;color:#fff">Poulet</div><div style="font-size:7px;color:#34D399">5 jours</div></div>
+              <span style="margin-left:auto;font-size:8px;color:rgba(255,255,255,0.3)">500g</span>
+            </div>
+          </div>
+        </div>
+        <div class="screen-card__label">🥑 Suivi des aliments</div>
+      </div>
+
+      <!-- Screen 4: Courses -->
+      <div class="screen-card">
+        <div class="screen-card__phone">
+          <div class="screen-card__content">
+            <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:#fff;margin-bottom:10px">🛒 Liste de courses</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="font-size:9px;color:rgba(255,255,255,0.4)">6 articles · 4 cochés</div>
+              <div style="width:50px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden"><div style="width:67%;height:100%;background:#34D399;border-radius:2px"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="width:18px;height:18px;background:#34D399;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#1A0E00;font-weight:700">✓</div>
+                <span style="font-size:10px;color:rgba(255,255,255,0.3);text-decoration:line-through">Pain de mie</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="width:18px;height:18px;background:#34D399;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#1A0E00;font-weight:700">✓</div>
+                <span style="font-size:10px;color:rgba(255,255,255,0.3);text-decoration:line-through">Beurre</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="width:18px;height:18px;background:#34D399;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#1A0E00;font-weight:700">✓</div>
+                <span style="font-size:10px;color:rgba(255,255,255,0.3);text-decoration:line-through">Lait</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="width:18px;height:18px;background:#34D399;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#1A0E00;font-weight:700">✓</div>
+                <span style="font-size:10px;color:rgba(255,255,255,0.3);text-decoration:line-through">Tomates</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+                <div style="width:18px;height:18px;border:1.5px solid rgba(245,166,35,0.3);border-radius:50%"></div>
+                <span style="font-size:10px;color:#fff">Papier toilette</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 0">
+                <div style="width:18px;height:18px;border:1.5px solid rgba(245,166,35,0.3);border-radius:50%"></div>
+                <span style="font-size:10px;color:#fff">Savon main</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-card__label">🛒 Liste de courses</div>
+      </div>
+
+      <!-- Screen 5: Stats -->
+      <div class="screen-card">
+        <div class="screen-card__phone">
+          <div class="screen-card__content" style="display:flex;flex-direction:column;align-items:center;gap:8px">
+            <div style="font-family:'Outfit',sans-serif;font-weight:700;font-size:12px;color:#fff;align-self:flex-start">📊 Statistiques</div>
+            <svg width="100" height="100" viewBox="0 0 100 100" style="margin-top:8px">
+              <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#FF6B6B" stroke-width="10" stroke-dasharray="143 96" stroke-dashoffset="35" stroke-linecap="round"/>
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#4ECDC4" stroke-width="10" stroke-dasharray="72 167" stroke-dashoffset="-108" stroke-linecap="round"/>
+              <text x="50" y="48" text-anchor="middle" font-family="Outfit" font-weight="800" font-size="16" fill="#fff">2/3</text>
+              <text x="50" y="62" text-anchor="middle" font-family="DM Sans" font-size="8" fill="rgba(255,255,255,0.4)">cette semaine</text>
+            </svg>
+            <div style="display:flex;gap:16px;font-size:9px;margin-top:4px">
+              <span style="color:#FF6B6B;display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;background:#FF6B6B;border-radius:50%;display:inline-block"></span>Eva 60%</span>
+              <span style="color:#4ECDC4;display:flex;align-items:center;gap:4px"><span style="width:6px;height:6px;background:#4ECDC4;border-radius:50%;display:inline-block"></span>Hugo 40%</span>
+            </div>
+            <div style="width:85%;margin-top:8px">
+              <div style="font-size:8px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:600;letter-spacing:1px">CETTE SEMAINE</div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:7px;color:rgba(255,255,255,0.3);width:24px">Lun</span><div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden"><div style="width:70%;height:100%;background:#F5A623;border-radius:3px"></div></div></div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:7px;color:rgba(255,255,255,0.3);width:24px">Mar</span><div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden"><div style="width:40%;height:100%;background:#4ECDC4;border-radius:3px"></div></div></div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:7px;color:rgba(255,255,255,0.3);width:24px">Mer</span><div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden"><div style="width:90%;height:100%;background:#FF6B6B;border-radius:3px"></div></div></div>
+              <div style="display:flex;align-items:center;gap:6px"><span style="font-size:7px;color:rgba(255,255,255,0.3);width:24px">Jeu</span><div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden"><div style="width:55%;height:100%;background:#A78BFA;border-radius:3px"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="screen-card__label">📊 Statistiques</div>
+      </div>
+
+    </div>
+
+    <div class="screenshots-fade screenshots-fade--left"></div>
+    <div class="screenshots-fade screenshots-fade--right"></div>
+  </div>
+
+  <div class="screenshots-dots" id="screenshotsDots">
+    <button class="dot dot--active" aria-label="Écran 1"></button>
+    <button class="dot" aria-label="Écran 2"></button>
+    <button class="dot" aria-label="Écran 3"></button>
+    <button class="dot" aria-label="Écran 4"></button>
+    <button class="dot" aria-label="Écran 5"></button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     TESTIMONIALS
+     ═══════════════════════════════════════════ -->
+<section class="testimonials">
+  <div class="section-header" data-reveal>
+    <div class="eyebrow">💬 Témoignages</div>
+    <h2 class="section-title">
+      Ils adorent<br>
+      <span class="gradient-text">MajordHome</span>
+    </h2>
+  </div>
+
+  <div class="testimonials-grid">
+    <div class="testimonial-card" data-reveal data-hover>
+      <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+      <div class="testimonial-card__text">
+        "On se disputait tout le temps pour savoir qui avait fait quoi. Maintenant avec les stats de balance,
+        c'est équitable et transparent. Meilleure app couple !"
+      </div>
+      <div class="testimonial-card__author">
+        <div class="testimonial-card__avatar" style="background:rgba(255,107,107,0.15)">👫</div>
+        <div>
+          <div class="testimonial-card__name">Eva & Hugo</div>
+          <div class="testimonial-card__role">En couple · Paris</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial-card" data-reveal data-reveal-delay="100" data-hover>
+      <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+      <div class="testimonial-card__text">
+        "Le suivi DLC est génial. On gaspillait énormément avant MajordHome.
+        Maintenant on reçoit les alertes et on cuisine en conséquence. Top !"
+      </div>
+      <div class="testimonial-card__author">
+        <div class="testimonial-card__avatar" style="background:rgba(52,211,153,0.15)">👩‍👧</div>
+        <div>
+          <div class="testimonial-card__name">Sophie L.</div>
+          <div class="testimonial-card__role">Mère de famille · Lyon</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="testimonial-card" data-reveal data-reveal-delay="200" data-hover>
+      <div class="testimonial-card__stars">⭐⭐⭐⭐⭐</div>
+      <div class="testimonial-card__text">
+        "À 3 en coloc, c'était le chaos. La liste de courses partagée et le planning
+        des tâches ont tout changé. On peut enfin s'organiser simplement."
+      </div>
+      <div class="testimonial-card__author">
+        <div class="testimonial-card__avatar" style="background:rgba(167,139,250,0.15)">🏠</div>
+        <div>
+          <div class="testimonial-card__name">Thomas R.</div>
+          <div class="testimonial-card__role">Colocation · Bordeaux</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     DOWNLOAD SECTION
+     ═══════════════════════════════════════════ -->
+<section class="download" id="download">
+  <div class="download__orb"></div>
+
+  <div class="download__inner" data-reveal>
+    <div class="download__badge">
+      <span>📱</span> Android APK
+    </div>
+
+    <h2 class="download__title">
+      Prêt à synchroniser<br>
+      <span class="gradient-text">votre foyer ?</span>
+    </h2>
+
+    <p class="download__desc">
+      Téléchargez MajordHome gratuitement.
+      Invitez les membres de votre foyer avec un simple code
+      et commencez à collaborer en temps réel.
+    </p>
+
+    <a href="#" class="download__btn" data-hover id="download-btn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="#1A0E00">
+        <path d="M17.523 15.341a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8zm-11.046 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8zM17.7 8.4l1.629-2.82a.34.34 0 0 0-.124-.463.34.34 0 0 0-.463.124l-1.649 2.855A10.25 10.25 0 0 0 12 7.2c-1.461 0-2.851.298-4.093.896L6.258 5.241a.34.34 0 0 0-.463-.124.34.34 0 0 0-.124.463L7.3 8.4C4.99 9.661 3.42 12.052 3.42 14.82h17.16C20.58 12.052 19.01 9.661 17.7 8.4z"/>
+      </svg>
+      <div class="download__btn-text">
+        <span class="download__btn-label">Télécharger l'APK</span>
+        <span class="download__btn-sub">Android · Gratuit · v1.0</span>
+      </div>
+      <svg class="download__btn-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1A0E00" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+    </a>
+
+    <div class="download__safety">
+      <span>🔒 Fichier sécurisé</span>
+      <span>·</span>
+      <span>🇪🇺 Données en Europe</span>
+      <span>·</span>
+      <span>🚫 Aucune pub</span>
+      <span>·</span>
+      <span>📖 Open source</span>
+    </div>
+
+    <div class="install-steps">
+      <div class="install-step">
+        <div class="install-step__num">1</div>
+        <div class="install-step__text">
+          <strong>Téléchargez</strong> le fichier APK
+        </div>
+      </div>
+      <div class="install-arrow">→</div>
+      <div class="install-step">
+        <div class="install-step__num">2</div>
+        <div class="install-step__text">
+          <strong>Autorisez</strong> les sources inconnues
+        </div>
+      </div>
+      <div class="install-arrow">→</div>
+      <div class="install-step">
+        <div class="install-step__num">3</div>
+        <div class="install-step__text">
+          <strong>Installez</strong> et créez votre foyer
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════
+     FOOTER
+     ═══════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__brand">
+      <span class="footer__name">MajordHome</span>
+      <span class="footer__tagline">Votre foyer, synchronisé 🏠</span>
+    </div>
+
+    <div class="footer__links">
+      <a href="#features" data-hover>Fonctionnalités</a>
+      <a href="#screenshots" data-hover>Aperçu</a>
+      <a href="#download" data-hover>Télécharger</a>
+      <a href="../privacy-policy/" data-hover>Confidentialité</a>
+      <a href="mailto:florian.jove.garcia@gmail.com" data-hover>Contact</a>
+    </div>
+
+    <div class="footer__bottom">
+      <span>&copy; 2026 MajordHome &middot; Créé par Florian JOVE GARCIA &middot; Tous droits réservés</span>
+      <div class="footer__badges">
+        <span class="footer__badge">Android</span>
+        <span class="footer__badge">RGPD 🇪🇺</span>
+        <span class="footer__badge">Gratuit</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+<!-- ═══════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  /* ─── GRAIN TEXTURE ─── */
+  (function createGrain() {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 256;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(256, 256);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = Math.random() * 255;
+      img.data[i] = img.data[i+1] = img.data[i+2] = v;
+      img.data[i+3] = 18;
+    }
+    ctx.putImageData(img, 0, 0);
+    document.getElementById('grain').style.backgroundImage = 'url(' + c.toDataURL() + ')';
+  })();
+
+  /* ─── CUSTOM CURSOR ─── */
+  const cursorEl = document.querySelector('.cursor');
+  const ringEl = document.querySelector('.cursor-ring');
+
+  if (cursorEl && ringEl && window.matchMedia('(pointer: fine)').matches) {
+    let mx = 0, my = 0, rx = 0, ry = 0;
+
+    document.addEventListener('mousemove', function(e) {
+      mx = e.clientX; my = e.clientY;
+      cursorEl.style.left = mx + 'px';
+      cursorEl.style.top = my + 'px';
+    });
+
+    (function animRing() {
+      rx += (mx - rx) * 0.12;
+      ry += (my - ry) * 0.12;
+      ringEl.style.left = rx + 'px';
+      ringEl.style.top = ry + 'px';
+      requestAnimationFrame(animRing);
+    })();
+
+    document.querySelectorAll('a,button,[data-hover]').forEach(function(el) {
+      el.addEventListener('mouseenter', function() {
+        cursorEl.classList.add('hovering');
+        ringEl.classList.add('hovering');
+      });
+      el.addEventListener('mouseleave', function() {
+        cursorEl.classList.remove('hovering');
+        ringEl.classList.remove('hovering');
+      });
+    });
+
+    document.addEventListener('mousedown', function() { cursorEl.classList.add('clicking'); });
+    document.addEventListener('mouseup', function() { cursorEl.classList.remove('clicking'); });
+  }
+
+  /* ─── PARTICLE SYSTEM ─── */
+  (function initParticles() {
+    const canvas = document.getElementById('particles');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H;
+    let pmx = 0, pmy = 0;
+    const COUNT = 80;
+    const particles = [];
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+    document.addEventListener('mousemove', function(e) { pmx = e.clientX; pmy = e.clientY; });
+
+    function Particle() { this.reset(); }
+    Particle.prototype.reset = function() {
+      this.x = Math.random() * W;
+      this.y = Math.random() * H;
+      this.r = Math.random() * 2.5 + 0.5;
+      this.vx = (Math.random() - 0.5) * 0.25;
+      this.vy = -(Math.random() * 0.4 + 0.15);
+      this.op = Math.random() * 0.30 + 0.05;
+      this.glow = Math.random() < 0.15;
+      this.phase = Math.random() * Math.PI * 2;
+    };
+    Particle.prototype.update = function(t) {
+      this.x += this.vx + Math.sin(t * 0.0008 + this.phase) * 0.3;
+      this.y += this.vy;
+      var dx = this.x - pmx, dy = this.y - pmy;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 100 && dist > 0) {
+        this.x += (dx / dist) * (100 - dist) * 0.03;
+        this.y += (dy / dist) * (100 - dist) * 0.03;
+      }
+      if (this.y < -10) { this.y = H + 10; this.x = Math.random() * W; }
+      if (this.x < -10) this.x = W + 10;
+      if (this.x > W + 10) this.x = -10;
+    };
+    Particle.prototype.draw = function(c) {
+      c.beginPath();
+      c.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      if (this.glow) { c.shadowBlur = 10; c.shadowColor = '#F5A623'; }
+      c.fillStyle = 'rgba(245,166,35,' + this.op + ')';
+      c.fill();
+      c.shadowBlur = 0;
+    };
+
+    for (var i = 0; i < COUNT; i++) particles.push(new Particle());
+
+    function loop(t) {
+      ctx.clearRect(0, 0, W, H);
+
+      // Connections
+      for (var i = 0; i < particles.length; i++) {
+        for (var j = i + 1; j < particles.length; j++) {
+          var dx = particles[i].x - particles[j].x;
+          var dy = particles[i].y - particles[j].y;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d < 120) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = 'rgba(245,166,35,' + (0.06 * (1 - d / 120)) + ')';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      for (var k = 0; k < particles.length; k++) {
+        particles[k].update(t);
+        particles[k].draw(ctx);
+      }
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  })();
+
+  /* ─── NAVBAR SCROLL ─── */
+  var navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', function() {
+    if (window.scrollY > 40) navbar.classList.add('scrolled');
+    else navbar.classList.remove('scrolled');
+  }, { passive: true });
+
+  /* ─── READING PROGRESS BAR ─── */
+  var progressBar = document.getElementById('progressBar');
+  window.addEventListener('scroll', function() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    if (h > 0) progressBar.style.width = (window.scrollY / h * 100) + '%';
+  }, { passive: true });
+
+  /* ─── MOBILE MENU ─── */
+  var burger = document.getElementById('burger');
+  var mobileMenu = document.getElementById('mobileMenu');
+  burger.addEventListener('click', function() {
+    burger.classList.toggle('active');
+    mobileMenu.classList.toggle('open');
+    document.body.style.overflow = mobileMenu.classList.contains('open') ? 'hidden' : '';
+  });
+  document.querySelectorAll('[data-mobile-link]').forEach(function(link) {
+    link.addEventListener('click', function() {
+      burger.classList.remove('active');
+      mobileMenu.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  });
+
+  /* ─── SCROLL REVEAL ─── */
+  var revealObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var delay = entry.target.dataset.revealDelay || 0;
+      setTimeout(function() {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }, parseInt(delay));
+      revealObserver.unobserve(entry.target);
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('[data-reveal]').forEach(function(el) {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(32px)';
+    el.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+    revealObserver.observe(el);
+  });
+
+  /* ─── COUNTER ANIMATION ─── */
+  var counterObserver = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (!entry.isIntersecting) return;
+      var target = parseInt(entry.target.dataset.count);
+      var el = entry.target.querySelector('.counter');
+      if (!el) return;
+      var current = 0;
+      var steps = 60;
+      var step = target / steps;
+      var frame = 0;
+      var timer = setInterval(function() {
+        frame++;
+        current = Math.min(Math.round(step * frame), target);
+        el.textContent = current;
+        if (frame >= steps) { el.textContent = target; clearInterval(timer); }
+      }, 16);
+      counterObserver.unobserve(entry.target);
+    });
+  }, { threshold: 0.5 });
+
+  document.querySelectorAll('.stat-item').forEach(function(el) {
+    counterObserver.observe(el);
+  });
+
+  /* ─── MOCK CALENDAR GENERATION ─── */
+  function generateCalendar(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var days = ['L','M','M','J','V','S','D'];
+    // March 2026: starts on Sunday (index 6 in Mon-first)
+    var startDay = 6; // 0=Mon ... 6=Sun
+    var totalDays = 31;
+    var eventDays = [5, 10, 15, 20, 25];
+    var html = '';
+
+    days.forEach(function(d) {
+      html += '<div class="mock-day mock-day--header">' + d + '</div>';
+    });
+
+    for (var i = 0; i < startDay; i++) {
+      html += '<div class="mock-day"></div>';
+    }
+
+    for (var d = 1; d <= totalDays; d++) {
+      var cls = 'mock-day';
+      if (d === 15) cls += ' mock-day--today';
+      if (eventDays.indexOf(d) !== -1) cls += ' mock-day--event';
+      html += '<div class="' + cls + '">' + d + '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+  generateCalendar('mockCalendar');
+  generateCalendar('mockCalendar2');
+
+  /* ─── SCREENSHOTS CAROUSEL DOTS ─── */
+  var scroll = document.getElementById('screenshotsScroll');
+  var dots = document.querySelectorAll('#screenshotsDots .dot');
+
+  if (scroll && dots.length) {
+    dots.forEach(function(dot, i) {
+      dot.addEventListener('click', function() {
+        var cards = scroll.querySelectorAll('.screen-card');
+        if (cards[i]) {
+          cards[i].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      });
+    });
+
+    scroll.addEventListener('scroll', function() {
+      var cards = scroll.querySelectorAll('.screen-card');
+      var scrollLeft = scroll.scrollLeft;
+      var scrollWidth = scroll.scrollWidth - scroll.clientWidth;
+      var ratio = scrollWidth > 0 ? scrollLeft / scrollWidth : 0;
+      var activeIndex = Math.round(ratio * (cards.length - 1));
+      dots.forEach(function(d, i) {
+        d.classList.toggle('dot--active', i === activeIndex);
+      });
+    }, { passive: true });
+  }
+
+})();
+</script>
+
+</body>
+</html>

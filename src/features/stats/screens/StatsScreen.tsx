@@ -298,6 +298,13 @@ export const StatsScreen: React.FC = () => {
     return subscribeToTable('tasks', household.id, () => { load(); });
   }, [household?.id, load]);
 
+  // Resolve an ID (member.id or user_id) to the member's id (PK)
+  const resolveMemberId = useCallback((id: string | null): string | null => {
+    if (!id) return null;
+    const m = members.find(x => x.id === id) ?? members.find(x => x.user_id === id);
+    return m?.id ?? null;
+  }, [members]);
+
   // ─── Computed Stats ────────────────────────────────────
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -306,18 +313,19 @@ export const StatsScreen: React.FC = () => {
 
     const byMember: Record<string, { total: number; done: number; byCat: Record<string, number> }> = {};
     tasks.forEach(t => {
-      const uid = t.assigned_to ?? t.created_by;
-      if (!byMember[uid]) byMember[uid] = { total: 0, done: 0, byCat: {} };
-      byMember[uid].total++;
+      const mid = resolveMemberId(t.assigned_to) ?? resolveMemberId(t.created_by);
+      if (!mid) return;
+      if (!byMember[mid]) byMember[mid] = { total: 0, done: 0, byCat: {} };
+      byMember[mid].total++;
       if (t.completed_at) {
-        byMember[uid].done++;
+        byMember[mid].done++;
         const cat = t.category || 'general';
-        byMember[uid].byCat[cat] = (byMember[uid].byCat[cat] || 0) + 1;
+        byMember[mid].byCat[cat] = (byMember[mid].byCat[cat] || 0) + 1;
       }
     });
 
     const memberStats = members.map((m, idx) => {
-      const s = byMember[m.user_id] ?? { total: 0, done: 0, byCat: {} };
+      const s = byMember[m.id] ?? { total: 0, done: 0, byCat: {} };
       return {
         ...m,
         total: s.total,
@@ -332,7 +340,7 @@ export const StatsScreen: React.FC = () => {
     const topCount = topMember?.done ?? 0;
 
     return { total, done, rate, topMember, topCount, memberStats, byMember };
-  }, [tasks, members]);
+  }, [tasks, members, resolveMemberId]);
 
   // ─── Weekly/daily breakdown ────────────────────────────
   const barData = useMemo(() => {
@@ -346,8 +354,8 @@ export const StatsScreen: React.FC = () => {
       label,
       values: memberList.map(m => {
         const memberTasks = tasks.filter(t => {
-          const uid = t.assigned_to ?? t.created_by;
-          if (uid !== m.user_id || !t.completed_at) return false;
+          const mid = resolveMemberId(t.assigned_to) ?? resolveMemberId(t.created_by);
+          if (mid !== m.id || !t.completed_at) return false;
           const d = new Date(t.completed_at);
           if (period === 'week') {
             return d.getDay() === ((li + 1) % 7); // Mon=0→Sun=6
@@ -362,7 +370,7 @@ export const StatsScreen: React.FC = () => {
         return { color: m.memberColor, count: memberTasks.length };
       }),
     }));
-  }, [tasks, period, stats.memberStats]);
+  }, [tasks, period, stats.memberStats, resolveMemberId]);
 
   // ─── Donut data ────────────────────────────────────────
   const donutData = useMemo(() =>

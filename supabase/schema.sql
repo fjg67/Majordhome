@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS events (
   recurrence TEXT DEFAULT 'none',
   category TEXT DEFAULT 'other',
   location TEXT,
+  assigned_members TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -302,6 +303,52 @@ ALTER TABLE device_tokens ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "own_tokens" ON device_tokens;
 CREATE POLICY "own_tokens" ON device_tokens
   FOR ALL USING (user_id = auth.uid());
+
+-- ═══════════════════════════════════════════════════════════
+-- RPC : Lookup foyer par code d'invitation (sans auth)
+-- ═══════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION lookup_household_by_code(p_invite_code TEXT)
+RETURNS TABLE(household_id UUID, household_name TEXT) AS $$
+  SELECT id AS household_id, name AS household_name
+  FROM households
+  WHERE lower(invite_code) = lower(trim(p_invite_code))
+  LIMIT 1
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- ═══════════════════════════════════════════════════════════
+-- RPC : Rejoindre un foyer par code en tant que membre (sans auth)
+-- ═══════════════════════════════════════════════════════════
+
+CREATE OR REPLACE FUNCTION join_household_by_code_as_member(
+  p_invite_code TEXT,
+  p_display_name TEXT,
+  p_color TEXT,
+  p_avatar_emoji TEXT
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  found_household_id UUID;
+  new_member_id UUID;
+BEGIN
+  SELECT id INTO found_household_id
+  FROM households
+  WHERE lower(invite_code) = lower(trim(p_invite_code));
+
+  IF found_household_id IS NULL THEN
+    RAISE EXCEPTION 'Code d''invitation invalide';
+  END IF;
+
+  INSERT INTO household_members (household_id, user_id, display_name, color, avatar_emoji, role)
+  VALUES (found_household_id, NULL, p_display_name, p_color, p_avatar_emoji, 'member')
+  RETURNING id INTO new_member_id;
+
+  RETURN new_member_id;
+END;
+$$;
 
 -- ═══════════════════════════════════════════════════════════
 -- RPC : Rejoindre un foyer par code d'invitation

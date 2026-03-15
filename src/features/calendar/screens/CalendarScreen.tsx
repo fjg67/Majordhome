@@ -177,9 +177,23 @@ export const CalendarScreen: React.FC = () => {
   const household = useAuthStore((s) => s.household);
   const members = useAuthStore((s) => s.members);
   const user = useAuthStore((s) => s.user);
-  const { dayData, markedDates, selectedDate } = useCalendarData(members);
   const setSelectedDate = useCalendarStore((s) => s.setSelectedDate);
   const calStore = useCalendarStore();
+
+  // Food items — fetch non-consumed items for calendar dots
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const loadFood = useCallback(async () => {
+    if (!household?.id) return;
+    const { data } = await supabase.from('food_items').select('*')
+      .eq('household_id', household.id).is('consumed_at', null)
+      .order('expiry_date', { ascending: true });
+    setFoodItems((data ?? []) as FoodItem[]);
+  }, [household?.id]);
+
+  useEffect(() => { loadFood(); }, [loadFood]);
+  useFocusEffect(useCallback(() => { loadFood(); }, [loadFood]));
+
+  const { dayData, markedDates, selectedDate } = useCalendarData(members, foodItems);
 
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -206,19 +220,6 @@ export const CalendarScreen: React.FC = () => {
     if (!household?.id) return;
     return calStore.subscribeRealtime(household.id);
   }, [household?.id]);
-
-  // Food items — fetch non-consumed, urgent/expiring items for home view
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-  const loadFood = useCallback(async () => {
-    if (!household?.id) return;
-    const { data } = await supabase.from('food_items').select('*')
-      .eq('household_id', household.id).is('consumed_at', null)
-      .order('expiry_date', { ascending: true }).limit(10);
-    setFoodItems((data ?? []) as FoodItem[]);
-  }, [household?.id]);
-
-  useEffect(() => { loadFood(); }, [loadFood]);
-  useFocusEffect(useCallback(() => { loadFood(); }, [loadFood]));
 
   const foodStats = useMemo(() => {
     const r = { expired: 0, urgent: 0, warning: 0, ok: 0 };
@@ -381,6 +382,11 @@ export const CalendarScreen: React.FC = () => {
                 const catCfg = EVT_CAT[cat] ?? EVT_CAT.other;
                 const catColor = catCfg.color;
                 const creator = findMember(ev.created_by);
+                const assignedIds: string[] = ev.assigned_members ?? [];
+                const assigned = assignedIds.length > 0
+                  ? assignedIds.map(id => findMember(id)).filter(Boolean) as NonNullable<ReturnType<typeof findMember>>[]
+                  : null;
+                const displayMembers = assigned && assigned.length > 0 ? assigned : (creator ? [creator] : []);
                 return (
                   <View key={ev.id} style={{
                     backgroundColor: COLORS.bgCard,
@@ -411,7 +417,7 @@ export const CalendarScreen: React.FC = () => {
                     <Text style={{ fontSize: 14, fontFamily: 'DMSans-Medium', color: COLORS.cream }} numberOfLines={1}>
                       {ev.title}
                     </Text>
-                    {(ev.location || creator) && (
+                    {(ev.location || displayMembers.length > 0) && (
                       <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 8 }}>
                         {ev.location ? (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
@@ -421,12 +427,16 @@ export const CalendarScreen: React.FC = () => {
                             </Text>
                           </View>
                         ) : null}
-                        {creator && (
-                          <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: creator.color ?? COLORS.accent }} />
-                            <Text style={{ fontSize: 10, fontFamily: 'DMSans-Regular', color: creator.color ?? COLORS.creamMuted }}>
-                              {creator.display_name}
-                            </Text>
+                        {displayMembers.length > 0 && (
+                          <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            {displayMembers.map(mem => (
+                              <View key={mem.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: mem.color ?? COLORS.accent }} />
+                                <Text style={{ fontSize: 10, fontFamily: 'DMSans-Regular', color: mem.color ?? COLORS.creamMuted }}>
+                                  {mem.display_name}
+                                </Text>
+                              </View>
+                            ))}
                           </View>
                         )}
                       </View>

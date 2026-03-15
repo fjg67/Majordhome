@@ -30,7 +30,15 @@ import Animated, {
 import LinearGradient from 'react-native-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../store/authStore';
+import { supabase } from '@services/supabase';
 import { nativeFetch } from '@services/nativeFetch';
+import { MEMBER_COLORS } from '@shared/theme/colors';
+
+const AVATAR_EMOJIS = [
+  '\u{1F60A}', '\u{1F60E}', '\u{1F913}', '\u{1F98A}', '\u{1F431}', '\u{1F436}', '\u{1F981}', '\u{1F43C}',
+  '\u{1F31F}', '\u{1F308}', '\u{1F525}', '\u{1F48E}', '\u{1F3A8}', '\u{1F3B5}', '\u{1F355}', '\u{1F338}',
+  '\u{1F680}', '\u{26A1}', '\u{1F3AE}', '\u{1F3E0}', '\u{1F33B}', '\u{1F98B}', '\u{1F340}', '\u{2728}',
+];
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { RootStackParamList } from '@app/navigation/types';
 
@@ -315,8 +323,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const signIn = useAuthStore(s => s.signIn);
   const signUp = useAuthStore(s => s.signUp);
-  const sendMagicLink = useAuthStore(s => s.sendMagicLink);
-  const verifyOtp = useAuthStore(s => s.verifyOtp);
+  const joinHousehold = useAuthStore(s => s.joinHousehold);
+  const updateProfile = useAuthStore(s => s.updateProfile);
   const loadHousehold = useAuthStore(s => s.loadHousehold);
 
   // ─── State ──────────────────────────────────────────────
@@ -332,15 +340,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
   }>({});
   const [toggleWidth, setToggleWidth] = useState(0);
 
-  // ─── Magic Link State ───────────────────────────────────
-  const [showMagicModal, setShowMagicModal] = useState(false);
-  const [magicStep, setMagicStep] = useState<1 | 2>(1);
-  const [magicEmail, setMagicEmail] = useState('');
-  const [otpCode, setOtpCode] = useState(['', '', '', '', '', '']);
-  const [magicLoading, setMagicLoading] = useState(false);
-  const [magicError, setMagicError] = useState<string | null>(null);
-  const [magicSuccess, setMagicSuccess] = useState<string | null>(null);
-  const otpRefs = useRef<(TextInput | null)[]>([]);
+  // ─── Invite Code State ───────────────────────────────────
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteStep, setInviteStep] = useState<1 | 2>(1);
+  const [inviteCode, setInviteCode] = useState('');
+  const [householdId, setHouseholdId] = useState('');
+  const [householdName, setHouseholdName] = useState('');
+  const [profileName, setProfileName] = useState('');
+  const [profileColor, setProfileColor] = useState(MEMBER_COLORS[1]);
+  const [profileEmoji, setProfileEmoji] = useState(AVATAR_EMOJIS[0]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
@@ -546,98 +556,99 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
     setDiagResult(results.join('\n'));
   }, []);
 
-  // ─── Magic Link Handlers ─────────────────────────────
-  const openMagicModal = useCallback(() => {
-    setMagicEmail(email.trim());
-    setOtpCode(['', '', '', '', '', '']);
-    setMagicStep(1);
-    setMagicError(null);
-    setMagicSuccess(null);
-    setShowMagicModal(true);
-  }, [email]);
-
-  const closeMagicModal = useCallback(() => {
-    setShowMagicModal(false);
-    setMagicLoading(false);
-    setMagicError(null);
-    setMagicSuccess(null);
+  // ─── Invite Code Handlers ─────────────────────────────
+  const openInviteModal = useCallback(() => {
+    setInviteCode('');
+    setInviteStep(1);
+    setInviteError(null);
+    setHouseholdId('');
+    setHouseholdName('');
+    setProfileName('');
+    setProfileColor(MEMBER_COLORS[1]);
+    setProfileEmoji(AVATAR_EMOJIS[0]);
+    setShowInviteModal(true);
   }, []);
 
-  const handleSendOtp = useCallback(async () => {
-    const trimmed = magicEmail.trim();
-    if (!trimmed) { setMagicError('Entrez votre adresse email'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setMagicError('Adresse email invalide'); return;
-    }
-    setMagicLoading(true);
-    setMagicError(null);
-    try {
-      const result = await withTimeout(sendMagicLink(trimmed), 15000);
-      if (result.error) {
-        setMagicError(result.error);
-      } else {
-        setMagicSuccess('Code envoyé ! Vérifiez votre boîte mail.');
-        setMagicStep(2);
-        setTimeout(() => otpRefs.current[0]?.focus(), 300);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setMagicError(msg === '__TIMEOUT__' ? 'Le serveur ne répond pas.' : msg);
-    } finally {
-      setMagicLoading(false);
-    }
-  }, [magicEmail, sendMagicLink]);
-
-  const handleOtpChange = useCallback((text: string, index: number) => {
-    const digit = text.replace(/[^0-9]/g, '').slice(-1);
-    setOtpCode(prev => {
-      const next = [...prev];
-      next[index] = digit;
-      return next;
-    });
-    if (digit && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+  const closeInviteModal = useCallback(() => {
+    setShowInviteModal(false);
+    setInviteLoading(false);
+    setInviteError(null);
   }, []);
 
-  const handleOtpKeyPress = useCallback((key: string, index: number) => {
-    if (key === 'Backspace' && !otpCode[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
+  const handleLookupCode = useCallback(async () => {
+    const cleaned = inviteCode.trim().toUpperCase();
+    if (cleaned.length !== 8) {
+      setInviteError("Le code doit contenir 8 caractères");
+      return;
     }
-  }, [otpCode]);
-
-  const handleVerifyOtp = useCallback(async () => {
-    const code = otpCode.join('');
-    if (code.length !== 6) { setMagicError('Entrez le code à 6 chiffres'); return; }
-    setMagicLoading(true);
-    setMagicError(null);
+    setInviteLoading(true);
+    setInviteError(null);
     try {
-      const result = await withTimeout(verifyOtp(magicEmail.trim(), code), 15000);
-      if (result.error) {
-        setMagicError(result.error);
-        setOtpCode(['', '', '', '', '', '']);
-        otpRefs.current[0]?.focus();
+      const { data, error } = await supabase
+        .rpc('lookup_household_by_code', { p_invite_code: cleaned });
+      if (error || !data || data.length === 0) {
+        setInviteError("Code d'invitation invalide");
       } else {
-        setShowMagicModal(false);
-        try { await withTimeout(loadHousehold(), 8000); } catch (_) { /* ok */ }
-        const state = useAuthStore.getState();
-        const nextRoute = !state.hasHousehold
-          ? 'HouseholdSetup'
-          : !state.hasProfile
-          ? 'MemberProfile'
-          : 'WelcomeMembers';
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'AuthSuccess', params: { nextRoute, mode: 'login' } }],
-        });
+        setHouseholdId(data[0].household_id);
+        setHouseholdName(data[0].household_name);
+        setInviteCode(cleaned);
+        setInviteStep(2);
       }
+    } catch (_e) {
+      setInviteError("Erreur de connexion");
+    } finally {
+      setInviteLoading(false);
+    }
+  }, [inviteCode]);
+
+  const handleJoinAsProfile = useCallback(async () => {
+    const trimmedName = profileName.trim();
+    if (!trimmedName) {
+      setInviteError('Entrez votre prénom');
+      return;
+    }
+    setInviteLoading(true);
+    setInviteError(null);
+    try {
+      // 1. Créer un compte silencieux (invisible pour l'utilisateur)
+      const silentEmail = `m${Date.now()}@hs.app`;
+      const silentPwd = `Hs${Math.random().toString(36).slice(2)}${Date.now()}`;
+      const signResult = await signUp(silentEmail, silentPwd);
+      if (signResult.error && signResult.error !== '__EMAIL_CONFIRM__') {
+        setInviteError('Erreur de création du profil');
+        return;
+      }
+
+      // 2. Rejoindre le foyer (utilise auth.uid())
+      const joinResult = await joinHousehold(inviteCode);
+      if (joinResult.error) {
+        setInviteError(joinResult.error);
+        return;
+      }
+
+      // 3. Mettre à jour le profil (nom, couleur, emoji)
+      await updateProfile({
+        displayName: trimmedName,
+        color: profileColor,
+        avatarEmoji: profileEmoji,
+      });
+
+      // 4. Charger toutes les données du foyer
+      await loadHousehold();
+
+      // 5. Naviguer vers l'accueil
+      setShowInviteModal(false);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Main' }],
+      });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setMagicError(msg === '__TIMEOUT__' ? 'Le serveur ne répond pas.' : msg);
+      setInviteError(msg);
     } finally {
-      setMagicLoading(false);
+      setInviteLoading(false);
     }
-  }, [otpCode, magicEmail, verifyOtp, loadHousehold, navigation]);
+  }, [profileName, profileColor, profileEmoji, inviteCode, signUp, joinHousehold, updateProfile, loadHousehold, navigation]);
 
   const subtitleText = isLogin ? 'Content de vous revoir ! 👋' : 'Créez votre espace ✨';
 
@@ -972,26 +983,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
             />
           </Animated.View>
 
-          {/* ══════ MAGIC LINK BUTTON ══════ */}
+          {/* ══════ INVITE CODE BUTTON ══════ */}
           <Animated.View entering={FadeIn.delay(1040).duration(400)}>
             <Pressable
-              onPress={openMagicModal}
+              onPress={openInviteModal}
               style={{
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
                 gap: 8, height: 50, borderRadius: 16,
-                borderWidth: 1, borderColor: 'rgba(167,139,250,0.35)',
-                backgroundColor: 'rgba(167,139,250,0.08)',
-                shadowColor: '#A78BFA',
+                borderWidth: 1, borderColor: C.amberBorder,
+                backgroundColor: C.amberSoft,
+                shadowColor: C.amber,
                 shadowOffset: { width: 0, height: 3 },
                 shadowOpacity: 0.20, shadowRadius: 10, elevation: 4,
               }}
-              accessibilityLabel="Connexion par lien magique"
+              accessibilityLabel="Rejoindre avec un code d'invitation"
             >
-              <Animated.Text style={[{ fontSize: 16 }, sparkleStyle]}>✨</Animated.Text>
+              <Text style={{ fontSize: 16 }}>🏠</Text>
               <Text style={{
                 fontFamily: 'Nunito-SemiBold', fontSize: 15,
-                color: 'rgba(167,139,250,0.85)',
-              }}>Lien magique</Text>
+                color: C.amber,
+              }}>Code d'invitation</Text>
             </Pressable>
           </Animated.View>
 
@@ -1037,16 +1048,16 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* ══════ MAGIC LINK MODAL ══════ */}
+      {/* ══════ INVITE CODE MODAL ══════ */}
       <Modal
-        visible={showMagicModal}
+        visible={showInviteModal}
         transparent
         animationType="fade"
-        onRequestClose={closeMagicModal}
+        onRequestClose={closeInviteModal}
         statusBarTranslucent
       >
         <Pressable
-          onPress={closeMagicModal}
+          onPress={closeInviteModal}
           style={{
             flex: 1, backgroundColor: 'rgba(0,0,0,0.70)',
             justifyContent: 'center', alignItems: 'center',
@@ -1059,52 +1070,57 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
               width: '100%', maxWidth: 380,
               backgroundColor: C.bgSurface,
               borderRadius: 28, borderWidth: 1,
-              borderColor: 'rgba(167,139,250,0.25)',
+              borderColor: C.amberBorder,
               overflow: 'hidden',
-              shadowColor: '#A78BFA',
+              shadowColor: C.amber,
               shadowOffset: { width: 0, height: 16 },
               shadowOpacity: 0.25, shadowRadius: 32, elevation: 20,
             }}
           >
             {/* Top accent */}
             <LinearGradient
-              colors={['transparent', 'rgba(167,139,250,0.50)', 'transparent']}
+              colors={['transparent', C.amberGlow, 'transparent']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
               style={{ height: 1.5, position: 'absolute', top: 0, left: 24, right: 24 }}
             />
 
             {/* Header */}
             <LinearGradient
-              colors={['rgba(167,139,250,0.15)', 'rgba(167,139,250,0.03)']}
+              colors={[C.amberSoft, 'rgba(245,166,35,0.03)']}
               style={{ paddingTop: 28, paddingBottom: 20, alignItems: 'center' }}
             >
               <View style={{
                 width: 64, height: 64, borderRadius: 20,
-                backgroundColor: 'rgba(167,139,250,0.12)',
-                borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)',
+                backgroundColor: C.amberSoft,
+                borderWidth: 1, borderColor: C.amberBorder,
                 alignItems: 'center', justifyContent: 'center',
                 marginBottom: 14,
               }}>
-                <Text style={{ fontSize: 30 }}>{magicStep === 1 ? '✨' : '🔑'}</Text>
+                <Text style={{ fontSize: 30 }}>{inviteStep === 1 ? '🏠' : '👤'}</Text>
               </View>
               <Text style={{
                 fontFamily: 'Nunito-Bold', fontSize: 22,
                 color: C.textPrimary, marginBottom: 6,
-              }}>{magicStep === 1 ? 'Lien magique' : 'Code de vérification'}</Text>
+              }}>{inviteStep === 1 ? "Code d'invitation" : householdName}</Text>
               <Text style={{
                 fontFamily: 'DMSans-Regular', fontSize: 13,
                 color: C.textSecondary, textAlign: 'center',
                 paddingHorizontal: 20, lineHeight: 19,
               }}>
-                {magicStep === 1
-                  ? 'Recevez un code à 6 chiffres par email pour vous connecter sans mot de passe.'
-                  : `Code envoyé à ${magicEmail}`}
+                {inviteStep === 1
+                  ? "Entrez le code à 8 caractères pour rejoindre un foyer."
+                  : "Créez votre profil pour rejoindre ce foyer."}
               </Text>
             </LinearGradient>
 
-            <View style={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 4 }}>
+            <ScrollView
+              style={{ maxHeight: SH * 0.5 }}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, paddingTop: 4 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               {/* Error */}
-              {magicError && (
+              {inviteError && (
                 <View style={{
                   flexDirection: 'row', alignItems: 'center', gap: 8,
                   backgroundColor: 'rgba(255,68,68,0.10)',
@@ -1117,134 +1133,203 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
                   <Text style={{
                     flex: 1, fontFamily: 'DMSans-Medium', fontSize: 12,
                     color: C.error, lineHeight: 17,
-                  }}>{magicError}</Text>
+                  }}>{inviteError}</Text>
                 </View>
               )}
 
-              {/* Success */}
-              {magicSuccess && magicStep === 2 && (
-                <View style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 8,
-                  backgroundColor: 'rgba(52,211,153,0.10)',
-                  borderRadius: 12, borderWidth: 1,
-                  borderColor: 'rgba(52,211,153,0.25)',
-                  paddingHorizontal: 12, paddingVertical: 10,
-                  marginBottom: 14,
-                }}>
-                  <Text style={{ fontSize: 13 }}>✅</Text>
-                  <Text style={{
-                    flex: 1, fontFamily: 'DMSans-Medium', fontSize: 12,
-                    color: C.success, lineHeight: 17,
-                  }}>{magicSuccess}</Text>
-                </View>
-              )}
-
-              {/* Step 1: Email */}
-              {magicStep === 1 && (
+              {/* Step 1: Invite Code */}
+              {inviteStep === 1 && (
                 <View>
                   <Text style={{
                     fontFamily: 'Nunito-Bold', fontSize: 11,
                     letterSpacing: 1.5, textTransform: 'uppercase',
-                    color: 'rgba(167,139,250,0.65)', marginBottom: 6, marginLeft: 2,
-                  }}>Adresse email</Text>
+                    color: 'rgba(245,166,35,0.65)', marginBottom: 6, marginLeft: 2,
+                  }}>Code d'invitation</Text>
                   <View style={{
                     flexDirection: 'row', alignItems: 'center',
                     backgroundColor: C.inputBg,
                     borderRadius: 16, borderWidth: 1.5,
-                    borderColor: 'rgba(167,139,250,0.25)',
+                    borderColor: C.amberBorder,
                     paddingHorizontal: 14, paddingVertical: 13,
                   }}>
                     <View style={{
                       width: 32, height: 32, borderRadius: 9,
-                      backgroundColor: 'rgba(78,205,196,0.13)',
+                      backgroundColor: C.amberSoft,
                       alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <Text style={{ fontSize: 15 }}>📧</Text>
+                      <Text style={{ fontSize: 15 }}>🔐</Text>
                     </View>
                     <TextInput
                       style={{
                         flex: 1, marginLeft: 10,
-                        fontFamily: 'DMSans-Regular', fontSize: 15,
+                        fontFamily: 'Nunito-Bold', fontSize: 18,
                         color: C.textPrimary, padding: 0,
+                        letterSpacing: 3,
                       }}
-                      value={magicEmail}
-                      onChangeText={t => { setMagicEmail(t); setMagicError(null); }}
-                      placeholder="vous@email.com"
+                      value={inviteCode}
+                      onChangeText={t => { setInviteCode(t.toUpperCase()); setInviteError(null); }}
+                      placeholder="ABCD1234"
                       placeholderTextColor="rgba(255,255,255,0.22)"
-                      selectionColor="#A78BFA"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
+                      selectionColor={C.amber}
+                      autoCapitalize="characters"
                       autoCorrect={false}
+                      maxLength={8}
                       returnKeyType="done"
-                      onSubmitEditing={handleSendOtp}
+                      onSubmitEditing={handleLookupCode}
                       autoFocus
                     />
                   </View>
                 </View>
               )}
 
-              {/* Step 2: OTP Code */}
-              {magicStep === 2 && (
+              {/* Step 2: Household Name + Profile */}
+              {inviteStep === 2 && (
                 <View>
+                  {/* Household Name Badge */}
+                  <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    backgroundColor: C.amberSoft,
+                    borderRadius: 14, borderWidth: 1,
+                    borderColor: C.amberBorder,
+                    paddingHorizontal: 14, paddingVertical: 12,
+                    marginBottom: 18,
+                  }}>
+                    <Text style={{ fontSize: 20 }}>🏡</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{
+                        fontFamily: 'DMSans-Regular', fontSize: 11,
+                        color: C.textMuted, textTransform: 'uppercase',
+                        letterSpacing: 1,
+                      }}>Foyer</Text>
+                      <Text style={{
+                        fontFamily: 'Nunito-Bold', fontSize: 17,
+                        color: C.amber,
+                      }}>{householdName}</Text>
+                    </View>
+                    <Text style={{
+                      fontFamily: 'DMSans-Medium', fontSize: 11,
+                      color: C.textMuted,
+                    }}>{inviteCode}</Text>
+                  </View>
+
+                  {/* Avatar Preview */}
+                  <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                    <View style={{
+                      width: 72, height: 72, borderRadius: 22,
+                      backgroundColor: profileColor + '22',
+                      borderWidth: 2, borderColor: profileColor,
+                      alignItems: 'center', justifyContent: 'center',
+                      shadowColor: profileColor,
+                      shadowOffset: { width: 0, height: 4 },
+                      shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+                    }}>
+                      <Text style={{ fontSize: 36 }}>{profileEmoji}</Text>
+                    </View>
+                  </View>
+
+                  {/* First Name */}
                   <Text style={{
                     fontFamily: 'Nunito-Bold', fontSize: 11,
                     letterSpacing: 1.5, textTransform: 'uppercase',
-                    color: 'rgba(167,139,250,0.65)', marginBottom: 12, marginLeft: 2,
-                  }}>Code à 6 chiffres</Text>
+                    color: 'rgba(245,166,35,0.65)', marginBottom: 6, marginLeft: 2,
+                  }}>Prénom</Text>
                   <View style={{
-                    flexDirection: 'row', justifyContent: 'center', gap: 8,
+                    flexDirection: 'row', alignItems: 'center',
+                    backgroundColor: C.inputBg,
+                    borderRadius: 16, borderWidth: 1.5,
+                    borderColor: C.amberBorder,
+                    paddingHorizontal: 14, paddingVertical: 13,
+                    marginBottom: 16,
                   }}>
-                    {[0, 1, 2, 3, 4, 5].map(i => (
-                      <TextInput
-                        key={i}
-                        ref={ref => { otpRefs.current[i] = ref; }}
-                        style={{
-                          width: 46, height: 56, borderRadius: 14,
-                          backgroundColor: C.inputBg,
-                          borderWidth: 1.5,
-                          borderColor: otpCode[i]
-                            ? 'rgba(167,139,250,0.50)'
-                            : 'rgba(255,255,255,0.12)',
-                          textAlign: 'center',
-                          fontFamily: 'Nunito-Bold', fontSize: 22,
-                          color: C.textPrimary,
-                        }}
-                        value={otpCode[i]}
-                        onChangeText={t => handleOtpChange(t, i)}
-                        onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, i)}
-                        keyboardType="number-pad"
-                        maxLength={1}
-                        selectionColor="#A78BFA"
-                        selectTextOnFocus
-                      />
+                    <View style={{
+                      width: 32, height: 32, borderRadius: 9,
+                      backgroundColor: profileColor + '22',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Text style={{ fontSize: 15 }}>{profileEmoji}</Text>
+                    </View>
+                    <TextInput
+                      style={{
+                        flex: 1, marginLeft: 10,
+                        fontFamily: 'DMSans-Regular', fontSize: 16,
+                        color: C.textPrimary, padding: 0,
+                      }}
+                      value={profileName}
+                      onChangeText={t => { setProfileName(t); setInviteError(null); }}
+                      placeholder="Votre prénom..."
+                      placeholderTextColor="rgba(255,255,255,0.22)"
+                      selectionColor={C.amber}
+                      autoCapitalize="words"
+                      autoCorrect={false}
+                      maxLength={20}
+                      autoFocus
+                    />
+                  </View>
+
+                  {/* Color Picker */}
+                  <Text style={{
+                    fontFamily: 'Nunito-Bold', fontSize: 11,
+                    letterSpacing: 1.5, textTransform: 'uppercase',
+                    color: 'rgba(245,166,35,0.65)', marginBottom: 8, marginLeft: 2,
+                  }}>Couleur</Text>
+                  <View style={{
+                    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
+                    justifyContent: 'center', marginBottom: 16,
+                  }}>
+                    {MEMBER_COLORS.map(c => (
+                      <Pressable key={c} onPress={() => setProfileColor(c)}>
+                        <View style={{
+                          width: 34, height: 34, borderRadius: 17,
+                          backgroundColor: c,
+                          borderWidth: profileColor === c ? 3 : 1,
+                          borderColor: profileColor === c ? '#FFF' : 'rgba(255,255,255,0.15)',
+                          transform: [{ scale: profileColor === c ? 1.15 : 1 }],
+                          shadowColor: profileColor === c ? c : 'transparent',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.5, shadowRadius: 6, elevation: profileColor === c ? 4 : 0,
+                        }} />
+                      </Pressable>
                     ))}
                   </View>
 
-                  {/* Resend */}
-                  <Pressable
-                    onPress={handleSendOtp}
-                    disabled={magicLoading}
-                    style={{ alignSelf: 'center', marginTop: 14 }}
-                  >
-                    <Text style={{
-                      fontFamily: 'DMSans-Medium', fontSize: 12,
-                      color: 'rgba(167,139,250,0.60)',
-                    }}>Renvoyer le code</Text>
-                  </Pressable>
+                  {/* Emoji Picker */}
+                  <Text style={{
+                    fontFamily: 'Nunito-Bold', fontSize: 11,
+                    letterSpacing: 1.5, textTransform: 'uppercase',
+                    color: 'rgba(245,166,35,0.65)', marginBottom: 8, marginLeft: 2,
+                  }}>Avatar</Text>
+                  <View style={{
+                    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
+                    justifyContent: 'center',
+                  }}>
+                    {AVATAR_EMOJIS.map(e => (
+                      <Pressable key={e} onPress={() => setProfileEmoji(e)}>
+                        <View style={{
+                          width: 40, height: 40, borderRadius: 12,
+                          backgroundColor: profileEmoji === e ? profileColor + '30' : C.inputBg,
+                          borderWidth: profileEmoji === e ? 2 : 1,
+                          borderColor: profileEmoji === e ? profileColor : 'rgba(255,255,255,0.08)',
+                          alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Text style={{ fontSize: 20 }}>{e}</Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
                 </View>
               )}
 
               {/* Action buttons */}
               <View style={{ marginTop: 20, gap: 10 }}>
                 <Pressable
-                  onPress={magicStep === 1 ? handleSendOtp : handleVerifyOtp}
-                  disabled={magicLoading}
+                  onPress={inviteStep === 1 ? handleLookupCode : handleJoinAsProfile}
+                  disabled={inviteLoading}
                   style={{ borderRadius: 16, overflow: 'hidden' }}
                 >
                   <LinearGradient
-                    colors={magicLoading
-                      ? ['rgba(167,139,250,0.4)', 'rgba(139,92,246,0.4)']
-                      : ['#A78BFA', '#8B5CF6']}
+                    colors={inviteLoading
+                      ? ['rgba(245,166,35,0.4)', 'rgba(232,146,10,0.4)']
+                      : [C.amber, C.amberWarm]}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={{
                       height: 52, borderRadius: 16,
@@ -1252,23 +1337,38 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
                       flexDirection: 'row', gap: 8,
                     }}
                   >
-                    {magicLoading ? (
+                    {inviteLoading ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <ActivityIndicator color="#FFF" size="small" />
+                        <ActivityIndicator color={C.bgDeep} size="small" />
                         <Text style={{
-                          fontFamily: 'Nunito-Bold', fontSize: 15, color: '#FFF',
-                        }}>{magicStep === 1 ? 'Envoi...' : 'Vérification...'}</Text>
+                          fontFamily: 'Nunito-Bold', fontSize: 15, color: C.bgDeep,
+                        }}>{inviteStep === 1 ? 'Vérification...' : 'Ajout...'}</Text>
                       </View>
                     ) : (
                       <Text style={{
-                        fontFamily: 'Nunito-Bold', fontSize: 15, color: '#FFF',
-                      }}>{magicStep === 1 ? '📧  Envoyer le code' : '🔓  Vérifier'}</Text>
+                        fontFamily: 'Nunito-Bold', fontSize: 15, color: C.bgDeep,
+                      }}>{inviteStep === 1 ? '🔍  Vérifier le code' : '🏠  Rejoindre le foyer'}</Text>
                     )}
                   </LinearGradient>
                 </Pressable>
 
+                {inviteStep === 2 && (
+                  <Pressable
+                    onPress={() => { setInviteStep(1); setInviteError(null); }}
+                    style={{
+                      height: 40, borderRadius: 14,
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{
+                      fontFamily: 'DMSans-Medium', fontSize: 13,
+                      color: C.amber,
+                    }}>← Changer le code</Text>
+                  </Pressable>
+                )}
+
                 <Pressable
-                  onPress={closeMagicModal}
+                  onPress={closeInviteModal}
                   style={{
                     height: 44, borderRadius: 14,
                     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
@@ -1281,7 +1381,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ navigation }) => {
                   }}>Annuler</Text>
                 </Pressable>
               </View>
-            </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
