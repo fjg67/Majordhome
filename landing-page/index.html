@@ -1378,6 +1378,26 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   margin: 0 auto;
   line-height: 1.7;
 }
+.updates__map {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.updates__map-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  font-size: 11px;
+  font-family: 'Outfit', sans-serif;
+  color: rgba(255,255,255,0.78);
+  letter-spacing: 0.03em;
+}
 .updates__tier-label {
   margin: 56px 0 24px;
   display: flex;
@@ -1405,12 +1425,36 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 .update-card {
   position:relative; background:#2E1A00; border-radius:22px;
   border:1px solid rgba(255,255,255,0.07); overflow:hidden;
-  transition:transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+  transition:transform .32s cubic-bezier(.22,.61,.36,1), box-shadow .32s ease, border-color .32s ease, background-color .32s ease;
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+  --mx: 50%;
+  --my: 50%;
+  --rx: 0deg;
+  --ry: 0deg;
+  --spot-color: rgba(245,166,35,0.24);
+}
+.update-card::before {
+  content:'';
+  position:absolute;
+  inset:-1px;
+  background: radial-gradient(180px circle at var(--mx) var(--my), var(--spot-color), rgba(255,255,255,0) 52%);
+  opacity:0;
+  transition: opacity .24s ease;
+  pointer-events:none;
+  z-index:1;
+}
+.update-card > * {
+  position: relative;
+  z-index: 2;
 }
 .update-card:hover {
-  transform:translateY(-6px);
+  transform:translateY(-8px) rotateX(var(--rx)) rotateY(var(--ry));
   border-color:var(--amber-border);
-  box-shadow:0 20px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(245,166,35,0.08);
+  box-shadow:0 24px 70px rgba(0,0,0,.46), 0 0 0 1px rgba(245,166,35,0.11);
+}
+.update-card:hover::before {
+  opacity: 1;
 }
 .update-card__glow {
   position:absolute; inset:0;
@@ -1476,6 +1520,46 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 .update-card__emoji      { font-size:32px; line-height:1; margin-bottom:4px; }
 .update-card__title--nice{ font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; color:#fff; }
 .update-card__desc--nice { font-size:12px; color:var(--text-muted); line-height:1.6; }
+
+/* Spotlight coloré par catégorie */
+.update-card--budget  { --spot-color: rgba(245,166,35,0.30); }  /* amber */
+.update-card--chat    { --spot-color: rgba(78,205,196,0.30); }  /* teal */
+.update-card--notes   { --spot-color: rgba(167,139,250,0.30); } /* violet */
+.update-card--rewards { --spot-color: rgba(255,215,0,0.26); }   /* gold */
+
+.update-card--amber  { --spot-color: rgba(245,166,35,0.28); }
+.update-card--teal   { --spot-color: rgba(78,205,196,0.28); }
+.update-card--violet { --spot-color: rgba(167,139,250,0.28); }
+.update-card--gold   { --spot-color: rgba(255,215,0,0.24); }
+
+/* Micro-animation d'entrée section par section */
+.updates__grid .update-card {
+  opacity: 0;
+  transform: translateY(24px) scale(0.985);
+}
+.updates__grid.is-inview .update-card {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity .62s ease, transform .62s cubic-bezier(.22,.61,.36,1), box-shadow .32s ease, border-color .32s ease, background-color .32s ease;
+}
+.updates__grid.is-inview .update-card:nth-child(1) { transition-delay: 30ms; }
+.updates__grid.is-inview .update-card:nth-child(2) { transition-delay: 90ms; }
+.updates__grid.is-inview .update-card:nth-child(3) { transition-delay: 150ms; }
+.updates__grid.is-inview .update-card:nth-child(4) { transition-delay: 210ms; }
+.updates__grid.is-inview .update-card:nth-child(5) { transition-delay: 270ms; }
+.updates__grid.is-inview .update-card:nth-child(6) { transition-delay: 330ms; }
+.updates__grid.is-inview .update-card:nth-child(7) { transition-delay: 390ms; }
+.updates__grid.is-inview .update-card:nth-child(8) { transition-delay: 450ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .updates__grid .update-card,
+  .updates__grid.is-inview .update-card,
+  .update-card,
+  .update-card:hover {
+    transition: none !important;
+    transform: none !important;
+  }
+}
 .updates__coming { margin-top:52px; display:flex; justify-content:center; }
 .updates__coming-inner { display:inline-flex; align-items:center; gap:12px; background:rgba(52,211,153,.07); border:1px solid rgba(52,211,153,.22); border-radius:100px; padding:10px 24px; }
 .updates__coming-dot   { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse-dot 2s ease-in-out infinite; flex-shrink:0; }
@@ -2003,7 +2087,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
     </a>
     <ul class="nav__links">
       <li><a href="#features" data-hover>Fonctionnalités</a></li>
-      <li><a href="#updates" data-hover>Nouveautés <span style="display:inline-block;background:var(--green);color:#1A0E00;font-size:9px;font-weight:800;font-family:'Outfit',sans-serif;padding:1px 6px;border-radius:100px;margin-left:4px;vertical-align:middle">v2</span></a></li>
+      <li><a href="#updates" data-hover>Pages de l'app <span style="display:inline-block;background:var(--green);color:#1A0E00;font-size:9px;font-weight:800;font-family:'Outfit',sans-serif;padding:1px 6px;border-radius:100px;margin-left:4px;vertical-align:middle">12</span></a></li>
       <li><a href="#screenshots" data-hover>Aperçu</a></li>
       <li><a href="#download" data-hover>Télécharger</a></li>
       <li><a href="../privacy-policy/" data-hover>Confidentialité</a></li>
@@ -2900,7 +2984,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 </section>
 
 <!-- ═══════════════════════════════════════════
-     NOUVEAUTÉS SECTION
+     PAGES APP SECTION
      ═══════════════════════════════════════════ -->
 <section class="updates" id="updates">
   <div class="updates__orb updates__orb--1"></div>
@@ -2910,21 +2994,27 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
     <div class="updates__header" data-reveal>
       <div class="updates__badge">
         <span class="updates__badge-dot"></span>
-        Nouveautés · v2.0
+        Pages de l'application
       </div>
       <h2 class="updates__title">
-        Tout ce dont votre foyer<br>
-        <span class="gradient-text">a besoin, maintenant</span>
+        Découvrez toutes les pages<br>
+        <span class="gradient-text">de votre espace famille</span>
       </h2>
       <p class="updates__subtitle">
-        12 nouvelles fonctionnalités pensées pour simplifier, organiser
-        et rendre la vie à plusieurs vraiment agréable.
+        Une navigation claire et complète pour gérer la maison, partager
+        l'essentiel et piloter votre foyer depuis un seul endroit.
       </p>
+      <div class="updates__map">
+        <span class="updates__map-chip">🏠 Maison</span>
+        <span class="updates__map-chip">🤝 Partage</span>
+        <span class="updates__map-chip">📊 Analyse</span>
+        <span class="updates__map-chip">⚙️ Réglages</span>
+      </div>
     </div>
 
-    <!-- TIER 1 : Haute valeur ajoutée -->
+    <!-- TIER 1 : Pages essentielles -->
     <div class="updates__tier-label" data-reveal>
-      <span class="updates__tier-badge updates__tier-badge--hot">🔥 Haute valeur ajoutée</span>
+      <span class="updates__tier-badge updates__tier-badge--hot">🔥 Pages essentielles</span>
     </div>
 
     <div class="updates__grid updates__grid--featured" data-reveal>
@@ -2942,7 +3032,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
             </svg>
           </div>
           <div class="update-card__meta">
-            <span class="update-card__tag" style="--tag-color:#F5A623">Nouveau</span>
+            <span class="update-card__tag" style="--tag-color:#F5A623">Page clé</span>
           </div>
         </div>
         <h3 class="update-card__title">Budget partagé</h3>
@@ -2985,7 +3075,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
             </svg>
           </div>
           <div class="update-card__meta">
-            <span class="update-card__tag" style="--tag-color:#4ECDC4">Nouveau</span>
+            <span class="update-card__tag" style="--tag-color:#4ECDC4">Page clé</span>
           </div>
         </div>
         <h3 class="update-card__title">Chat & Messages</h3>
@@ -3027,7 +3117,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
             </svg>
           </div>
           <div class="update-card__meta">
-            <span class="update-card__tag" style="--tag-color:#A78BFA">Nouveau</span>
+            <span class="update-card__tag" style="--tag-color:#A78BFA">Page clé</span>
           </div>
         </div>
         <h3 class="update-card__title">Notes partagées</h3>
@@ -3054,7 +3144,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
             </svg>
           </div>
           <div class="update-card__meta">
-            <span class="update-card__tag" style="--tag-color:#FFD700">Nouveau</span>
+            <span class="update-card__tag" style="--tag-color:#FFD700">Page clé</span>
           </div>
         </div>
         <h3 class="update-card__title">Récompenses & Gamification</h3>
@@ -3090,92 +3180,92 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 
     </div><!-- /featured grid -->
 
-    <!-- TIER 2 : Moyenne valeur ajoutée -->
+    <!-- TIER 2 : Pages maison -->
     <div class="updates__tier-label" data-reveal>
-      <span class="updates__tier-badge updates__tier-badge--mid">⭐ Moyenne valeur ajoutée</span>
+      <span class="updates__tier-badge updates__tier-badge--mid">🏠 Pages maison</span>
     </div>
 
     <div class="updates__grid updates__grid--mid" data-reveal>
 
-      <div class="update-card update-card--mid">
+      <div class="update-card update-card--mid update-card--amber">
         <div class="update-card__icon-wrap update-card__icon-wrap--sm" style="--card-color:#FF6B6B">🍽️</div>
         <div class="update-card__body">
-          <h3 class="update-card__title update-card__title--sm">Meal Planning</h3>
-          <p class="update-card__desc update-card__desc--sm">Planifiez les repas de la semaine et générez automatiquement votre liste de courses.</p>
+          <h3 class="update-card__title update-card__title--sm">Page Repas</h3>
+          <p class="update-card__desc update-card__desc--sm">Planning hebdomadaire, mode chef de famille, suggestions équilibrées et semaine healthy en un tap.</p>
         </div>
         <div class="update-card__pills update-card__pills--sm">
-          <span class="update-pill update-pill--sm">📅 Semaine</span>
-          <span class="update-pill update-pill--sm">🛒 Auto</span>
+          <span class="update-pill update-pill--sm">👨‍🍳 Chef</span>
+          <span class="update-pill update-pill--sm">🥗 Healthy</span>
         </div>
       </div>
 
-      <div class="update-card update-card--mid">
+      <div class="update-card update-card--mid update-card--teal">
         <div class="update-card__icon-wrap update-card__icon-wrap--sm" style="--card-color:#4ECDC4">🔄</div>
         <div class="update-card__body">
-          <h3 class="update-card__title update-card__title--sm">Corvées tournantes</h3>
-          <p class="update-card__desc update-card__desc--sm">Attribution automatique des corvées en rotation. Vaisselle, aspirateur, poubelles — chacun son tour.</p>
+          <h3 class="update-card__title update-card__title--sm">Page Corvées</h3>
+          <p class="update-card__desc update-card__desc--sm">Organisation des tâches du foyer avec suivi, priorités, progression du jour et interactions rapides.</p>
         </div>
         <div class="update-card__pills update-card__pills--sm">
-          <span class="update-pill update-pill--sm">⚙️ Auto</span>
-          <span class="update-pill update-pill--sm">📊 Stats</span>
+          <span class="update-pill update-pill--sm">✅ Suivi</span>
+          <span class="update-pill update-pill--sm">⚡ Rapide</span>
         </div>
       </div>
 
-      <div class="update-card update-card--mid">
+      <div class="update-card update-card--mid update-card--teal">
         <div class="update-card__icon-wrap update-card__icon-wrap--sm" style="--card-color:#34D399">🗳️</div>
         <div class="update-card__body">
-          <h3 class="update-card__title update-card__title--sm">Sondages & Votes</h3>
-          <p class="update-card__desc update-card__desc--sm">"On mange quoi ce soir ?" · "Film du samedi ?" Décidez ensemble en un tap, résultats en temps réel.</p>
+          <h3 class="update-card__title update-card__title--sm">Page Sondages</h3>
+          <p class="update-card__desc update-card__desc--sm">Décisions du foyer en direct avec votes persistants, expiration automatique et résultats partagés.</p>
         </div>
         <div class="update-card__pills update-card__pills--sm">
           <span class="update-pill update-pill--sm">⚡ Temps réel</span>
-          <span class="update-pill update-pill--sm">🎯 Simple</span>
+          <span class="update-pill update-pill--sm">🗳️ Décision</span>
         </div>
       </div>
 
-      <div class="update-card update-card--mid">
+      <div class="update-card update-card--mid update-card--violet">
         <div class="update-card__icon-wrap update-card__icon-wrap--sm" style="--card-color:#A78BFA">📁</div>
         <div class="update-card__body">
-          <h3 class="update-card__title update-card__title--sm">Documents du foyer</h3>
-          <p class="update-card__desc update-card__desc--sm">Factures, contrats, quittances, ordonnances. Tous vos documents importants accessibles en un endroit.</p>
+          <h3 class="update-card__title update-card__title--sm">Page Documents</h3>
+          <p class="update-card__desc update-card__desc--sm">Classement des documents importants, consultation rapide, partage et rappels d'échéance.</p>
         </div>
         <div class="update-card__pills update-card__pills--sm">
-          <span class="update-pill update-pill--sm">📄 PDF</span>
-          <span class="update-pill update-pill--sm">📸 Photos</span>
+          <span class="update-pill update-pill--sm">📄 Dossiers</span>
+          <span class="update-pill update-pill--sm">🔔 Rappels</span>
         </div>
       </div>
 
     </div><!-- /mid grid -->
 
-    <!-- TIER 3 : Nice to have -->
+    <!-- TIER 3 : Pages confort -->
     <div class="updates__tier-label" data-reveal>
-      <span class="updates__tier-badge updates__tier-badge--nice">✨ Nice to have</span>
+      <span class="updates__tier-badge updates__tier-badge--nice">✨ Pages confort</span>
     </div>
 
     <div class="updates__grid updates__grid--nice" data-reveal>
 
-      <div class="update-card update-card--nice">
+      <div class="update-card update-card--nice update-card--amber">
         <div class="update-card__emoji">🌤️</div>
-        <h3 class="update-card__title update-card__title--nice">Météo intégrée</h3>
-        <p class="update-card__desc update-card__desc--nice">Widget météo sur le dashboard pour planifier la journée en un coup d'œil.</p>
+        <h3 class="update-card__title update-card__title--nice">Page Météo</h3>
+        <p class="update-card__desc update-card__desc--nice">Prévisions locales visuelles pour organiser la semaine du foyer en un regard.</p>
       </div>
 
-      <div class="update-card update-card--nice">
+      <div class="update-card update-card--nice update-card--teal">
         <div class="update-card__emoji">⏱️</div>
-        <h3 class="update-card__title update-card__title--nice">Minuteurs partagés</h3>
-        <p class="update-card__desc update-card__desc--nice">Lessive, cuisson, recharge — lancez un timer visible par tous en temps réel.</p>
+        <h3 class="update-card__title update-card__title--nice">Page Minuteurs</h3>
+        <p class="update-card__desc update-card__desc--nice">Décomptes partagés pour cuisine, lessive, routines et rappels de la maison.</p>
       </div>
 
-      <div class="update-card update-card--nice">
+      <div class="update-card update-card--nice update-card--violet">
         <div class="update-card__emoji">😊</div>
-        <h3 class="update-card__title update-card__title--nice">Tableau d'humeur</h3>
-        <p class="update-card__desc update-card__desc--nice">Chaque membre indique son humeur du jour. Fun, chaleureux et suivi du bien-être collectif.</p>
+        <h3 class="update-card__title update-card__title--nice">Page Humeurs</h3>
+        <p class="update-card__desc update-card__desc--nice">Suivi bien-être du foyer avec météo émotionnelle et vision collective.</p>
       </div>
 
-      <div class="update-card update-card--nice">
+      <div class="update-card update-card--nice update-card--gold">
         <div class="update-card__emoji">🔲</div>
-        <h3 class="update-card__title update-card__title--nice">Widget Android</h3>
-        <p class="update-card__desc update-card__desc--nice">Aperçu rapide des tâches et événements du jour directement depuis l'écran d'accueil.</p>
+        <h3 class="update-card__title update-card__title--nice">Page Événements</h3>
+        <p class="update-card__desc update-card__desc--nice">Calendrier partagé, rappels et sorties pour garder toute la famille synchronisée.</p>
       </div>
 
     </div><!-- /nice grid -->
@@ -3184,7 +3274,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
     <div class="updates__coming" data-reveal>
       <div class="updates__coming-inner">
         <div class="updates__coming-dot"></div>
-        <span class="updates__coming-text">Toutes ces fonctionnalités sont <strong>déjà disponibles</strong> dans la version 2.0 — <a href="#download" class="updates__coming-link">téléchargez l'APK</a></span>
+        <span class="updates__coming-text">Toutes ces pages sont <strong>déjà disponibles</strong> dans l'application — <a href="#download" class="updates__coming-link">téléchargez l'APK</a></span>
       </div>
     </div>
 
@@ -3275,7 +3365,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 
     <div class="footer__links">
       <a href="#features" data-hover>Fonctionnalités</a>
-      <a href="#updates" data-hover>Nouveautés</a>
+      <a href="#updates" data-hover>Pages de l'app</a>
       <a href="#screenshots" data-hover>Aperçu</a>
       <a href="#download" data-hover>Télécharger</a>
       <a href="../privacy-policy/" data-hover>Confidentialité</a>
@@ -3463,6 +3553,53 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
       document.body.style.overflow = '';
     });
   });
+
+  /* ─── WOW EFFECTS: UPDATE CARDS ─── */
+  (function initUpdatesWow() {
+    var cards = document.querySelectorAll('.update-card');
+    if (!cards.length) return;
+
+    var finePointer = window.matchMedia('(pointer: fine)').matches;
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (finePointer && !reducedMotion) {
+      cards.forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+          var r = card.getBoundingClientRect();
+          var x = e.clientX - r.left;
+          var y = e.clientY - r.top;
+          var px = x / r.width;
+          var py = y / r.height;
+          var ry = (px - 0.5) * 9;
+          var rx = (0.5 - py) * 8;
+
+          card.style.setProperty('--mx', x + 'px');
+          card.style.setProperty('--my', y + 'px');
+          card.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+          card.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+        });
+
+        card.addEventListener('mouseleave', function() {
+          card.style.setProperty('--mx', '50%');
+          card.style.setProperty('--my', '50%');
+          card.style.setProperty('--rx', '0deg');
+          card.style.setProperty('--ry', '0deg');
+        });
+      });
+    }
+
+    var updatesGridObserver = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-inview');
+        updatesGridObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.2 });
+
+    document.querySelectorAll('.updates__grid').forEach(function(grid) {
+      updatesGridObserver.observe(grid);
+    });
+  })();
 
   /* ─── SCROLL REVEAL ─── */
   var revealObserver = new IntersectionObserver(function(entries) {
