@@ -793,6 +793,37 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
+.features-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 26px;
+  max-width: 980px;
+}
+.features-filter {
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.72);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .25s ease;
+}
+.features-filter:hover {
+  border-color: rgba(245,166,35,0.30);
+  color: #fff;
+}
+.features-filter.is-active {
+  background: rgba(245,166,35,0.16);
+  border-color: rgba(245,166,35,0.40);
+  color: var(--amber);
+  box-shadow: 0 6px 24px rgba(245,166,35,0.18);
+}
 .feature-card {
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08);
@@ -823,6 +854,9 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   background: rgba(255,255,255,0.06);
   transform: translateY(-4px);
   box-shadow: 0 20px 48px rgba(0,0,0,0.35);
+}
+.feature-card.is-filtered-out {
+  display: none;
 }
 .feature-card__icon { font-size: 36px; margin-bottom: 20px; display: block; }
 .feature-card h3 {
@@ -1828,6 +1862,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   .phone--secondary { display: none; }
   .features-grid { grid-template-columns: 1fr 1fr; }
   .feature-card--large { grid-column: span 2; }
+  .features-filters { margin-bottom: 22px; }
   .spotlight { grid-template-columns: 1fr; gap: 40px; text-align: center; }
   .spotlight--reverse { direction: ltr; }
   .spotlight__features { align-items: center; }
@@ -1875,6 +1910,8 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   .features { padding: 60px 20px; }
   .features-grid { grid-template-columns: 1fr; gap: 14px; }
   .feature-card--large { grid-column: span 1; }
+  .features-filters { justify-content: flex-start; gap: 8px; margin-bottom: 18px; }
+  .features-filter { font-size: 10px; padding: 7px 11px; }
   .feature-card { padding: 24px; border-radius: 20px; }
   .feature-card h3 { font-size: 18px; }
   .feature-card p { font-size: 14px; }
@@ -1962,6 +1999,7 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
   .trusted-bar__items { gap: 8px; }
 
   .features { padding: 50px 16px; }
+  .features-filters { margin-bottom: 14px; }
   .feature-card { padding: 20px; }
   .feature-card__icon { font-size: 28px; margin-bottom: 14px; }
   .feature-card h3 { font-size: 17px; }
@@ -2293,70 +2331,214 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
       <span class="gradient-text">foyer a besoin</span>
     </h2>
     <p class="section-desc">
-      Six modules conçus pour simplifier la vie quotidienne,
-      synchronisés en temps réel entre tous les membres.
+      Un écosystème complet qui regroupe toutes les fonctionnalités de l'app :
+      maison, partage, analyse et organisation quotidienne en temps réel.
     </p>
   </div>
 
+  <div class="features-filters" data-reveal data-reveal-delay="80" role="tablist" aria-label="Filtrer les fonctionnalités">
+    <button class="features-filter is-active" type="button" data-feature-filter="all" role="tab" aria-selected="true">✨ Toutes</button>
+    <button class="features-filter" type="button" data-feature-filter="maison" role="tab" aria-selected="false">🏠 Maison</button>
+    <button class="features-filter" type="button" data-feature-filter="partage" role="tab" aria-selected="false">🤝 Partage</button>
+    <button class="features-filter" type="button" data-feature-filter="analyse" role="tab" aria-selected="false">📊 Analyse</button>
+    <button class="features-filter" type="button" data-feature-filter="parametres" role="tab" aria-selected="false">⚙️ Paramètres</button>
+    <button class="features-filter" type="button" data-feature-filter="realtime" role="tab" aria-selected="false">⚡ Temps réel</button>
+  </div>
+
   <div class="features-grid">
-    <div class="feature-card feature-card--large" data-reveal style="--accent:#F5A623">
+    <div class="feature-card feature-card--large" data-feature-cat="maison,realtime" data-reveal style="--accent:#F5A623">
+      <div class="feature-card__icon">🏠</div>
+      <h3>Accueil intelligent</h3>
+      <p>Un dashboard central qui regroupe événements, tâches, courses, humeurs, minuteurs et alertes utiles du foyer.</p>
+      <div class="feature-card__tags">
+        <span>Widgets</span>
+        <span>Résumé global</span>
+        <span>Contrôle</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="partage,realtime" data-reveal data-reveal-delay="80" style="--accent:#FF6B6B">
       <div class="feature-card__icon">📅</div>
-      <h3>Calendrier partagé</h3>
-      <p>Un calendrier commun visible par tous les membres. Créez des événements, assignez des participants, recevez des rappels.</p>
+      <h3>Calendrier & Événements</h3>
+      <p>Planification des rendez-vous, sorties et rappels avec vue partagée et synchronisation en temps réel.</p>
+      <div class="feature-card__tags">
+        <span>Planning</span>
+        <span>Rappels</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="maison,realtime" data-reveal data-reveal-delay="120" style="--accent:#F97316">
+      <div class="feature-card__icon">✅</div>
+      <h3>Tâches</h3>
+      <p>Gestion des tâches du foyer avec priorités, filtres, progression et interactions rapides.</p>
+      <div class="feature-card__tags">
+        <span>Suivi</span>
+        <span>Productivité</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="partage,realtime" data-reveal data-reveal-delay="160" style="--accent:#4ECDC4">
+      <div class="feature-card__icon">💬</div>
+      <h3>Chat & Messages</h3>
+      <p>Messagerie interne du foyer avec texte, photos et échanges instantanés.</p>
       <div class="feature-card__tags">
         <span>Temps réel</span>
-        <span>Rappels</span>
-        <span>Récurrence</span>
+        <span>Partage</span>
       </div>
     </div>
 
-    <div class="feature-card" data-reveal data-reveal-delay="100" style="--accent:#FF6B6B">
-      <div class="feature-card__icon">✅</div>
-      <h3>Tâches & Balance</h3>
-      <p>Assignez des tâches, suivez qui fait quoi. Graphiques de balance pour une répartition équitable.</p>
+    <div class="feature-card" data-feature-cat="maison,realtime" data-reveal data-reveal-delay="200" style="--accent:#34D399">
+      <div class="feature-card__icon">🛒</div>
+      <h3>Courses</h3>
+      <p>Liste collaborative avec tri intelligent, suggestions et suivi des articles cochés.</p>
       <div class="feature-card__tags">
-        <span>Balance</span>
-        <span>Stats</span>
+        <span>Collaboratif</span>
+        <span>Smart list</span>
       </div>
     </div>
 
-    <div class="feature-card" data-reveal data-reveal-delay="150" style="--accent:#34D399">
+    <div class="feature-card" data-feature-cat="maison,realtime" data-reveal data-reveal-delay="240" style="--accent:#10B981">
       <div class="feature-card__icon">🥑</div>
-      <h3>Suivi DLC</h3>
-      <p>Suivez les dates de péremption de vos aliments. Alertes avant expiration, zéro gaspillage.</p>
+      <h3>Aliments & DLC</h3>
+      <p>Suivi du frigo et placard avec alertes anti-gaspillage sur les dates d'expiration.</p>
       <div class="feature-card__tags">
-        <span>Alertes</span>
+        <span>DLC</span>
         <span>Anti-gaspi</span>
       </div>
     </div>
 
-    <div class="feature-card" data-reveal data-reveal-delay="200" style="--accent:#4ECDC4">
-      <div class="feature-card__icon">🛒</div>
-      <h3>Liste de courses</h3>
-      <p>Liste partagée en temps réel. Suggestions automatiques depuis vos DLC urgentes.</p>
+    <div class="feature-card" data-feature-cat="maison" data-reveal data-reveal-delay="280" style="--accent:#FB923C">
+      <div class="feature-card__icon">🍽️</div>
+      <h3>Repas</h3>
+      <p>Planning des repas, mode chef de famille, suggestions équilibrées et semaine healthy.</p>
       <div class="feature-card__tags">
-        <span>Suggestions</span>
-        <span>Collaboratif</span>
+        <span>Menu semaine</span>
+        <span>Healthy</span>
       </div>
     </div>
 
-    <div class="feature-card" data-reveal data-reveal-delay="250" style="--accent:#A78BFA">
-      <div class="feature-card__icon">📊</div>
+    <div class="feature-card" data-feature-cat="analyse" data-reveal data-reveal-delay="320" style="--accent:#F5A623">
+      <div class="feature-card__icon">💰</div>
+      <h3>Budget partagé</h3>
+      <p>Dépenses, soldes entre membres, filtres, statistiques et plan de remboursement conseillé.</p>
+      <div class="feature-card__tags">
+        <span>Dépenses</span>
+        <span>Équilibre</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="partage,realtime" data-reveal data-reveal-delay="360" style="--accent:#A78BFA">
+      <div class="feature-card__icon">📝</div>
+      <h3>Notes</h3>
+      <p>Notes partagées, catégories, contenus épinglés et édition avancée pour toute la famille.</p>
+      <div class="feature-card__tags">
+        <span>Organisation</span>
+        <span>Partage</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="partage" data-reveal data-reveal-delay="400" style="--accent:#8B5CF6">
+      <div class="feature-card__icon">📂</div>
+      <h3>Documents</h3>
+      <p>Centralisation des documents importants du foyer avec consultation et échéances.</p>
+      <div class="feature-card__tags">
+        <span>Archivage</span>
+        <span>Rappels</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="partage,realtime" data-reveal data-reveal-delay="440" style="--accent:#22C55E">
+      <div class="feature-card__icon">🗳️</div>
+      <h3>Sondages</h3>
+      <p>Votes rapides pour décider ensemble, avec résultats en direct et expiration automatique.</p>
+      <div class="feature-card__tags">
+        <span>Vote</span>
+        <span>Décision</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="maison" data-reveal data-reveal-delay="480" style="--accent:#60A5FA">
+      <div class="feature-card__icon">🌤️</div>
+      <h3>Météo</h3>
+      <p>Prévisions locales intégrées pour adapter les activités et routines du foyer.</p>
+      <div class="feature-card__tags">
+        <span>Prévisions</span>
+        <span>Local</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="maison,realtime" data-reveal data-reveal-delay="520" style="--accent:#C084FC">
+      <div class="feature-card__icon">⏱️</div>
+      <h3>Minuteurs partagés</h3>
+      <p>Décomptes collaboratifs pour cuisine, lessive et tâches quotidiennes avec notifications.</p>
+      <div class="feature-card__tags">
+        <span>Timers</span>
+        <span>Routines</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="maison" data-reveal data-reveal-delay="560" style="--accent:#FBBF24">
+      <div class="feature-card__icon">😊</div>
+      <h3>Humeurs</h3>
+      <p>Tableau d'humeur du foyer pour suivre le bien-être des membres au fil des jours.</p>
+      <div class="feature-card__tags">
+        <span>Bien-être</span>
+        <span>Foyer</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="analyse" data-reveal data-reveal-delay="600" style="--accent:#FFD700">
+      <div class="feature-card__icon">🏆</div>
+      <h3>Récompenses</h3>
+      <p>XP, badges, objectifs et classement pour gamifier les habitudes du quotidien.</p>
+      <div class="feature-card__tags">
+        <span>Badges</span>
+        <span>Classement</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="analyse" data-reveal data-reveal-delay="640" style="--accent:#EC4899">
+      <div class="feature-card__icon">📈</div>
       <h3>Statistiques</h3>
-      <p>Graphiques de productivité, top contributeur, historique des tâches et bilan alimentaire hebdo.</p>
+      <p>Vue analytique des activités du foyer pour comprendre et améliorer l'organisation.</p>
       <div class="feature-card__tags">
-        <span>Graphiques</span>
-        <span>Bilan hebdo</span>
+        <span>Data</span>
+        <span>Insights</span>
       </div>
     </div>
 
-    <div class="feature-card" data-reveal data-reveal-delay="300" style="--accent:#FFD700">
+    <div class="feature-card" data-feature-cat="maison" data-reveal data-reveal-delay="680" style="--accent:#06B6D4">
+      <div class="feature-card__icon">🔄</div>
+      <h3>Corvées tournantes</h3>
+      <p>Rotation automatique des corvées pour une répartition plus juste entre membres.</p>
+      <div class="feature-card__tags">
+        <span>Rotation</span>
+        <span>Équité</span>
+      </div>
+    </div>
+
+    <div class="feature-card" data-feature-cat="parametres" data-reveal data-reveal-delay="720" style="--accent:#94A3B8">
+      <div class="feature-card__icon">⚙️</div>
+      <h3>Réglages & Profil</h3>
+      <p>Préférences de l'app, personnalisation du foyer et gestion des paramètres des membres.</p>
+      <div class="feature-card__tags">
+        <span>Préférences</span>
+        <span>Configuration</span>
+      </div>
+    </div>
+
+    <div class="feature-card feature-card--large" data-feature-cat="realtime,partage,maison" data-reveal data-reveal-delay="760" style="--accent:#22D3EE">
       <div class="feature-card__icon">⚡</div>
-      <h3>Temps réel</h3>
-      <p>Toutes les actions sont synchronisées instantanément. Eva coche une tâche → Hugo la voit en temps réel.</p>
+      <h3>Synchronisation temps réel & notifications</h3>
+      <p>Toutes les pages de l'app sont synchronisées en direct avec alertes contextuelles pour ne rien manquer.</p>
       <div class="feature-card__realtime-indicator">
         <span class="realtime-dot"></span>
         Live sync actif
+      </div>
+      <div class="feature-card__tags" style="margin-top:12px">
+        <span>Realtime</span>
+        <span>Alertes</span>
+        <span>Multi-membre</span>
       </div>
     </div>
   </div>
@@ -3598,6 +3780,36 @@ button { border: none; background: none; font: inherit; cursor: pointer; }
 
     document.querySelectorAll('.updates__grid').forEach(function(grid) {
       updatesGridObserver.observe(grid);
+    });
+  })();
+
+  /* ─── FEATURES CATEGORY FILTERS ─── */
+  (function initFeatureFilters() {
+    var filters = Array.prototype.slice.call(document.querySelectorAll('[data-feature-filter]'));
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.features .feature-card'));
+    if (!filters.length || !cards.length) return;
+
+    function setActiveFilter(key) {
+      filters.forEach(function(btn) {
+        var active = btn.getAttribute('data-feature-filter') === key;
+        btn.classList.toggle('is-active', active);
+        btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+
+      cards.forEach(function(card) {
+        var cats = (card.getAttribute('data-feature-cat') || '')
+          .split(',')
+          .map(function(c) { return c.trim(); })
+          .filter(Boolean);
+        var visible = key === 'all' || cats.indexOf(key) !== -1;
+        card.classList.toggle('is-filtered-out', !visible);
+      });
+    }
+
+    filters.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setActiveFilter(btn.getAttribute('data-feature-filter') || 'all');
+      });
     });
   })();
 
