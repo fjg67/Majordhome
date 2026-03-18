@@ -653,7 +653,7 @@ export const HomeScreen: React.FC = () => {
                 </View>
               )}
             </View>
-            <Pressable onPress={() => (navigation as any).navigate('Events')}>
+            <Pressable onPress={() => (navigation as any).navigate('More', { screen: 'Events' })}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 12, color: 'rgba(245,166,35,0.6)' }}>
                   Voir tout
@@ -953,7 +953,7 @@ export const HomeScreen: React.FC = () => {
                 </View>
               )}
             </View>
-            <Pressable onPress={() => (navigation as any).navigate('Food')}>
+            <Pressable onPress={() => (navigation as any).navigate('More', { screen: 'Food' })}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 12, color: 'rgba(245,166,35,0.6)' }}>
                   Voir tout
@@ -1106,9 +1106,9 @@ export const HomeScreen: React.FC = () => {
           alignItems: 'flex-end', gap: 10,
         }}>
           {[
-            { emoji: '📅', label: 'Événement', tab: 'Events', delay: 0 },
-            { emoji: '✅', label: 'Tâche', tab: 'Tasks', delay: 60 },
-            { emoji: '🥑', label: 'Aliment', tab: 'Food', delay: 120 },
+            { emoji: '📅', label: 'Événement', tab: 'Events', isMore: true, delay: 0 },
+            { emoji: '✅', label: 'Tâche', tab: 'Tasks', isMore: false, delay: 60 },
+            { emoji: '🥑', label: 'Aliment', tab: 'Food', isMore: true, delay: 120 },
           ].map((item, i) => (
             <Animated.View key={item.tab}
               entering={FadeInUp.delay(item.delay).duration(250).springify()}
@@ -1117,7 +1117,11 @@ export const HomeScreen: React.FC = () => {
               <Pressable
                 onPress={() => {
                   setFabOpen(false);
-                  (navigation as any).navigate(item.tab);
+                  if (item.isMore) {
+                    (navigation as any).navigate('More', { screen: item.tab });
+                  } else {
+                    (navigation as any).navigate(item.tab);
+                  }
                 }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
               >

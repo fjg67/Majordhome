@@ -10,8 +10,14 @@ function navigate(screen: string, params?: Record<string, unknown>): void {
   }
 }
 
+const MORE_SCREENS = new Set(['Events', 'Food', 'Budget', 'Notes', 'Stats', 'Rewards', 'Settings']);
+
 function navigateToTab(tabName: string): void {
-  navigate('Main', { screen: tabName });
+  if (MORE_SCREENS.has(tabName)) {
+    navigate('Main', { screen: 'More', params: { screen: tabName } });
+  } else {
+    navigate('Main', { screen: tabName });
+  }
 }
 
 function navigateByType(
@@ -46,6 +52,9 @@ function navigateByType(
     case 'SHOPPING_LIST_COMPLETE':
     case 'SHOPPING_DLC_SUGGESTION':
       navigateToTab('Shopping');
+      break;
+    case 'CHAT_NEW_MESSAGE':
+      navigateToTab('Chat');
       break;
     case 'HOUSEHOLD_WEEKLY_RECAP':
     case 'HOUSEHOLD_MONTHLY_STATS':
@@ -97,6 +106,9 @@ const handleNotificationAction = (
     // Courses
     open_shopping: () => navigateToTab('Shopping'),
     add_suggested_item: () => navigateToTab('Shopping'),
+
+    // Chat
+    open_chat: () => navigateToTab('Chat'),
 
     // Système
     open_store: () => {

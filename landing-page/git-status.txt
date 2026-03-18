@@ -1,0 +1,51 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   ../android/app/src/main/AndroidManifest.xml
+	modified:   ../babel.config.js
+	modified:   index.html
+	modified:   ../package-lock.json
+	modified:   ../package.json
+	modified:   ../src/app/navigation/MainTabNavigator.tsx
+	modified:   ../src/app/navigation/types.ts
+	modified:   ../src/features/auth/store/authStore.ts
+	modified:   ../src/features/calendar/screens/HomeScreen.tsx
+	modified:   ../src/features/events/screens/EventListScreen.tsx
+	modified:   ../src/features/food/screens/FoodTrackerScreen.tsx
+	modified:   ../src/features/stats/screens/StatsScreen.tsx
+	modified:   ../src/services/notifications/NotificationService.ts
+	modified:   ../src/services/notifications/channels.ts
+	modified:   ../src/services/notifications/handlers.ts
+	modified:   ../src/services/notifications/templates.ts
+	modified:   ../src/services/notifications/types.ts
+	modified:   ../src/types/index.ts
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	../build-release.bat
+	../gradle_build_output.txt
+	../gradle_clean_output.txt
+	../gradle_release_output.txt
+	git-status.txt
+	../src/features/budget/
+	../src/features/chat/
+	../src/features/chores/
+	../src/features/documents/
+	../src/features/home/
+	../src/features/meals/
+	../src/features/mood/
+	../src/features/more/
+	../src/features/notes/
+	../src/features/polls/
+	../src/features/rewards/
+	../src/features/timers/
+	../src/features/weather/
+	../supabase/.temp/
+	../supabase/migration_v2_features.sql
+	../supabase/migration_v3_features.sql
+	../supabase/migrations/
+
+no changes added to commit (use "git add" and/or "git commit -a")

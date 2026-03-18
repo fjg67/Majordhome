@@ -1,0 +1,127 @@
+﻿> Task :gradle-plugin:checkKotlinGradlePluginConfigurationErrors
+> Task :gradle-plugin:compileKotlin UP-TO-DATE
+> Task :gradle-plugin:compileJava NO-SOURCE
+> Task :gradle-plugin:pluginDescriptors UP-TO-DATE
+> Task :gradle-plugin:processResources UP-TO-DATE
+> Task :gradle-plugin:classes UP-TO-DATE
+> Task :gradle-plugin:jar UP-TO-DATE
+
+> Configure project :notifee_react-native
+:notifee_react-native @notifee/react-native found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@notifee\react-native
+:notifee_react-native package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@notifee\react-native\package.json
+:notifee_react-native:version set from package.json: 7.9.0 (7,9,0 - 7009000)
+:notifee_react-native:android.compileSdk using custom value: 35
+:notifee_react-native:android.targetSdk using custom value: 35
+:notifee_react-native:android.minSdk using custom value: 23
+:notifee_react-native:reactNativeAndroidDir C:\Users\flori\Documents\Projet\HomeSync\node_modules\react-native\android
+
+> Configure project :react-native-firebase_app
+:react-native-firebase_app package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_app:firebase.bom using default value: 34.10.0
+:react-native-firebase_app:play.play-services-auth using default value: 21.5.0
+:react-native-firebase_app package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_app:version set from package.json: 23.8.8 (23,8,8 - 23008008)
+:react-native-firebase_app:android.compileSdk using custom value: 35
+:react-native-firebase_app:android.targetSdk using custom value: 35
+:react-native-firebase_app:android.minSdk using custom value: 23
+:react-native-firebase_app:reactNativeAndroidDir C:\Users\flori\Documents\Projet\HomeSync\node_modules\react-native\android
+[33m [react-native-firebase] Legacy Architecture support is deprecated for all modules
+[33m [react-native-firebase] All modules will require New Architecture support in the future.
+[33m [react-native-firebase] Suppress this with environment variable RNFB_SUPPRESS_NEW_ARCHITECTURE_WARNING=1[0m
+
+> Configure project :react-native-firebase_messaging
+:react-native-firebase_messaging package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@react-native-firebase\messaging\package.json
+:react-native-firebase_app package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@react-native-firebase\app\package.json
+:react-native-firebase_messaging:firebase.bom using default value: 34.10.0
+:react-native-firebase_messaging package.json found at C:\Users\flori\Documents\Projet\HomeSync\node_modules\@react-native-firebase\messaging\package.json
+:react-native-firebase_messaging:version set from package.json: 23.8.8 (23,8,8 - 23008008)
+:react-native-firebase_messaging:android.compileSdk using custom value: 35
+:react-native-firebase_messaging:android.targetSdk using custom value: 35
+:react-native-firebase_messaging:android.minSdk using custom value: 23
+:react-native-firebase_messaging:reactNativeAndroidDir C:\Users\flori\Documents\Projet\HomeSync\node_modules\react-native\android
+
+> Configure project :react-native-reanimated
+Android gradle plugin: 8.2.1
+Gradle: 8.6
+
+> Configure project :shopify_react-native-skia
+react-native-skia: node_modules/ found at: C:\Users\flori\Documents\Projet\HomeSync\node_modules
+react-native-skia: RN Version: 74 / 0.74.3
+react-native-skia: isSourceBuild: false
+react-native-skia: PrebuiltDir: C:\Users\flori\Documents\Projet\HomeSync\node_modules\@shopify\react-native-skia\android\build/react-native-0*/jni
+react-native-skia: buildType: debug
+react-native-skia: buildDir: C:\Users\flori\Documents\Projet\HomeSync\node_modules\@shopify\react-native-skia\android\build
+react-native-skia: node_modules: C:\Users\flori\Documents\Projet\HomeSync\node_modules
+react-native-skia: Enable Prefab: true
+react-native-skia: aar state post 70, do nothing
+
+> Task :app:clean
+> Task :notifee_react-native:clean
+> Task :react-native-async-storage_async-storage:clean
+> Task :react-native-audio-recorder-player:clean UP-TO-DATE
+> Task :react-native-clipboard_clipboard:clean
+> Task :react-native-community_netinfo:clean
+> Task :react-native-firebase_app:clean
+> Task :react-native-firebase_messaging:clean
+> Task :react-native-gesture-handler:clean
+> Task :react-native-image-picker:clean UP-TO-DATE
+> Task :react-native-linear-gradient:clean
+
+> Task :react-native-mmkv:externalNativeBuildCleanDebug
+Clean reactnativemmkv-armeabi-v7a, core-armeabi-v7a
+Clean reactnativemmkv-arm64-v8a, core-arm64-v8a
+Clean reactnativemmkv-x86, core-x86
+Clean reactnativemmkv-x86_64, core-x86_64
+
+> Task :react-native-mmkv:externalNativeBuildCleanRelease
+Clean reactnativemmkv-armeabi-v7a, core-armeabi-v7a
+Clean reactnativemmkv-arm64-v8a, core-arm64-v8a
+Clean reactnativemmkv-x86, core-x86
+Clean reactnativemmkv-x86_64, core-x86_64
+
+> Task :react-native-mmkv:clean
+> Task :react-native-pager-view:clean
+> Task :react-native-reanimated:cleanCmakeCache
+> Task :react-native-reanimated:externalNativeBuildCleanDebug
+> Task :react-native-reanimated:externalNativeBuildCleanRelease
+> Task :react-native-reanimated:clean
+> Task :react-native-safe-area-context:clean
+
+> Task :react-native-screens:externalNativeBuildCleanDebug
+Clean rnscreens-armeabi-v7a
+Clean rnscreens-arm64-v8a
+Clean rnscreens-x86
+Clean rnscreens-x86_64
+
+> Task :react-native-screens:externalNativeBuildCleanRelease
+Clean rnscreens-armeabi-v7a
+Clean rnscreens-arm64-v8a
+Clean rnscreens-x86
+Clean rnscreens-x86_64
+
+> Task :react-native-screens:clean
+> Task :react-native-svg:clean
+> Task :react-native-vector-icons:clean
+
+> Task :shopify_react-native-skia:externalNativeBuildCleanDebug
+Clean rnskia-armeabi-v7a
+Clean rnskia-arm64-v8a
+Clean rnskia-x86
+Clean rnskia-x86_64
+
+> Task :shopify_react-native-skia:externalNativeBuildCleanRelease
+Clean rnskia-armeabi-v7a
+Clean rnskia-arm64-v8a
+Clean rnskia-x86
+Clean rnskia-x86_64
+
+> Task :shopify_react-native-skia:clean
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.6/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 33s
+33 actionable tasks: 27 executed, 6 up-to-date

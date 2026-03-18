@@ -22,7 +22,11 @@ class NotificationService {
   private static instance: NotificationService;
   private householdId: string | null = null;
   private userId: string | null = null;
+  private currentMemberId: string | null = null;
   private realtimeSubscriptions: Array<{ unsubscribe: () => void }> = [];
+
+  /** Set to true by ChatScreen when it's focused — suppresses chat notifications */
+  public isChatScreenActive = false;
 
   static getInstance(): NotificationService {
     if (!NotificationService.instance) {
@@ -36,6 +40,19 @@ class NotificationService {
   async initialize(userId: string, householdId: string): Promise<void> {
     this.userId = userId;
     this.householdId = householdId;
+
+    // Resolve current user's member ID for identity comparisons
+    try {
+      const { data: memberData } = await supabase
+        .from('household_members')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('household_id', householdId)
+        .single();
+      this.currentMemberId = memberData?.id ?? null;
+    } catch (e) {
+      console.warn('[NotificationService] Could not resolve member ID:', e);
+    }
 
     try {
       await createAllChannels();
@@ -65,6 +82,12 @@ class NotificationService {
       await this.scheduleRecurringNotifications();
     } catch (e) {
       console.warn('[NotificationService] Recurring notifications error:', e);
+    }
+
+    try {
+      await this.rescheduleExistingEventReminders();
+    } catch (e) {
+      console.warn('[NotificationService] Event reminders reschedule error:', e);
     }
 
     try {
@@ -176,8 +199,8 @@ class NotificationService {
         async (payload) => {
           const task = payload.new as Record<string, string>;
           if (
-            task.assigned_to === this.userId &&
-            task.created_by !== this.userId
+            this.isCurrentUser(task.assigned_to) &&
+            !this.isCurrentUser(task.created_by)
           ) {
             const creator = await this.getMemberName(task.created_by);
             await this.displayNotification({
@@ -208,10 +231,10 @@ class NotificationService {
           if (
             task.completed_at &&
             !old.completed_at &&
-            task.completed_by !== this.userId &&
-            task.assigned_to === this.userId
+            !this.isCurrentUser(task.completed_by) &&
+            this.isCurrentUser(task.assigned_to)
           ) {
-            const completer = await this.getMemberName(task.completed_by!);
+            const completer = await this.getMemberName(task.completed_by);
             await this.displayNotification({
               type: 'TASK_COMPLETED_PARTNER',
               householdId: this.householdId!,
@@ -236,7 +259,7 @@ class NotificationService {
         },
         async (payload) => {
           const event = payload.new as Record<string, string>;
-          if (event.created_by !== this.userId) {
+          if (!this.isCurrentUser(event.created_by)) {
             const creator = await this.getMemberName(event.created_by);
             await this.displayNotification({
               type: 'EVENT_CREATED',
@@ -267,7 +290,7 @@ class NotificationService {
         },
         async (payload) => {
           const food = payload.new as Record<string, string>;
-          if (food.added_by !== this.userId) {
+          if (!this.isCurrentUser(food.added_by)) {
             const adder = await this.getMemberName(food.added_by);
             await this.displayNotification({
               type: 'FOOD_ADDED_PARTNER',
@@ -298,7 +321,7 @@ class NotificationService {
         },
         async (payload) => {
           const item = payload.new as Record<string, string>;
-          if (item.added_by !== this.userId) {
+          if (!this.isCurrentUser(item.added_by)) {
             const adder = await this.getMemberName(item.added_by);
             await this.displayNotification({
               type: 'SHOPPING_ITEM_ADDED',
@@ -323,7 +346,7 @@ class NotificationService {
           if (
             item.checked &&
             !old.checked &&
-            item.checked_by !== this.userId
+            !this.isCurrentUser(item.checked_by as string)
           ) {
             const checker = await this.getMemberName(item.checked_by as string);
             const { count } = await supabase
@@ -368,7 +391,7 @@ class NotificationService {
         },
         async (payload) => {
           const member = payload.new as Record<string, string>;
-          if (member.user_id !== this.userId) {
+          if (!this.isCurrentUser(member.user_id)) {
             const { data: household } = await supabase
               .from('households')
               .select('name')
@@ -388,19 +411,164 @@ class NotificationService {
       )
       .subscribe();
 
+    // ── CHAT MESSAGES (new `messages` table) ──
+    const chatSub = supabase
+      .channel(`notif-chat-${this.householdId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `household_id=eq.${this.householdId}`,
+        },
+        async (payload) => {
+          try {
+            const msg = payload.new as Record<string, string | number | null>;
+            // Ne pas notifier ses propres messages, les messages système, ou si le chat est visible
+            if (
+              this.isCurrentUser(msg.sender_id as string) ||
+              this.isChatScreenActive ||
+              msg.type === 'system'
+            ) {
+              return;
+            }
+
+            const sender = await this.getMemberName(msg.sender_id as string);
+
+            if (msg.type === 'image') {
+              await this.displayNotification({
+                type: 'CHAT_IMAGE',
+                householdId: this.householdId!,
+                triggeredBy: msg.sender_id as string,
+                triggeredByName: sender,
+                data: { caption: (msg.content as string) ?? '' },
+              });
+            } else if (msg.type === 'audio') {
+              await this.displayNotification({
+                type: 'CHAT_AUDIO',
+                householdId: this.householdId!,
+                triggeredBy: msg.sender_id as string,
+                triggeredByName: sender,
+                data: { duration: String(msg.audio_duration ?? '') },
+              });
+            } else {
+              const content = (msg.content as string) ?? '';
+              const truncated = content.length > 80
+                ? content.substring(0, 80) + '…'
+                : content;
+
+              await this.displayNotification({
+                type: 'CHAT_NEW_MESSAGE',
+                householdId: this.householdId!,
+                triggeredBy: msg.sender_id as string,
+                triggeredByName: sender,
+                data: { content: truncated },
+              });
+            }
+          } catch (e) {
+            console.error('[NotificationService] Chat notification error:', e);
+          }
+        },
+      )
+      .subscribe();
+
+    // ── BUDGET ──
+    const budgetSub = supabase
+      .channel('notif-budget')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'expenses',
+          filter: `household_id=eq.${this.householdId}`,
+        },
+        async (payload) => {
+          try {
+            const expense = payload.new as Record<string, unknown>;
+            if (this.isCurrentUser(expense.paid_by as string)) return;
+
+            const payer = await this.getMemberName(expense.paid_by as string);
+            const { data: membersData } = await supabase
+              .from('household_members')
+              .select('id')
+              .eq('household_id', this.householdId!);
+            const memberCount = membersData?.length ?? 2;
+            const share = (Number(expense.amount) / memberCount).toFixed(2);
+
+            const catLabels: Record<string, string> = {
+              food: 'Alimentation', transport: 'Transport', utilities: 'Charges',
+              rent: 'Loyer', entertainment: 'Loisirs', health: 'Santé',
+              shopping: 'Shopping', restaurant: 'Restaurant', bills: 'Factures', other: 'Autre',
+            };
+            const category = catLabels[expense.category as string] ?? String(expense.category ?? 'Autre');
+
+            await this.displayNotification({
+              type: 'BUDGET_EXPENSE_ADDED',
+              householdId: this.householdId!,
+              triggeredBy: expense.paid_by as string,
+              triggeredByName: payer,
+              data: {
+                expenseTitle: String(expense.title ?? ''),
+                amount: Number(expense.amount).toFixed(2),
+                share,
+                category,
+              },
+            });
+          } catch (e) {
+            console.error('[NotificationService] Budget notification error:', e);
+          }
+        },
+      )
+      .subscribe();
+
     this.realtimeSubscriptions = [
       tasksSub,
       eventsSub,
       foodSub,
       shoppingSub,
       membersSub,
+      chatSub,
+      budgetSub,
     ];
+  }
+
+  // ── BUDGET : rappel de solde ─────────
+
+  async notifyBudgetBalanceIfNeeded(
+    myBalance: number,
+    householdId: string,
+    creditorName?: string,
+  ): Promise<void> {
+    if (myBalance >= -0.5) return;
+    await this.displayNotification({
+      type: 'BUDGET_BALANCE_REMINDER',
+      householdId,
+      data: {
+        amount: Math.abs(myBalance).toFixed(2),
+        creditorName: creditorName ?? '',
+      },
+    });
+  }
+
+  async notifyBudgetSettled(householdId: string, memberName: string): Promise<void> {
+    await this.displayNotification({
+      type: 'BUDGET_SETTLED',
+      householdId,
+      data: { memberName },
+    });
   }
 
   // ── NOTIFICATIONS RÉCURRENTES PLANIFIÉES ──
 
   async scheduleRecurringNotifications(): Promise<void> {
-    await notifee.cancelTriggerNotifications();
+    // Cancel only recurring IDs (preserve food/event reminders)
+    const recurringIds = [
+      'daily_morning_recap', 'daily_evening_reminder',
+      'weekly_recap', 'monthly_stats', 'daily_food_check',
+    ];
+    await Promise.all(recurringIds.map(id => notifee.cancelTriggerNotification(id)));
 
     await Promise.all([
       this.scheduleDailyMorningRecap(),
@@ -413,14 +581,45 @@ class NotificationService {
 
   // Récap matin — chaque jour à 8h00
   private async scheduleDailyMorningRecap(): Promise<void> {
+    const today = dayjs().format('YYYY-MM-DD');
+    const { data: todayTasks } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('household_id', this.householdId!)
+      .eq('due_date', today)
+      .is('completed_at', null)
+      .order('created_at', { ascending: true })
+      .limit(5);
+
+    const startOfDay = dayjs().startOf('day').toISOString();
+    const endOfDay = dayjs().endOf('day').toISOString();
+    const { data: todayEvents } = await supabase
+      .from('events')
+      .select('title, start_at')
+      .eq('household_id', this.householdId!)
+      .gte('start_at', startOfDay)
+      .lte('start_at', endOfDay)
+      .order('start_at', { ascending: true });
+
+    const taskCount = todayTasks?.length ?? 0;
+    const eventCount = todayEvents?.length ?? 0;
+    const firstTask = todayTasks?.[0]?.title ?? '';
+
+    let body: string;
+    if (taskCount === 0 && eventCount === 0) {
+      body = 'Aucune tâche ni événement — profite de ta journée ! ☀️';
+    } else {
+      const parts: string[] = [];
+      if (taskCount > 0) parts.push(`${taskCount} tâche${taskCount > 1 ? 's' : ''}`);
+      if (eventCount > 0) parts.push(`${eventCount} événement${eventCount > 1 ? 's' : ''}`);
+      body = parts.join(' · ');
+      if (firstTask) body += `\nÀ faire : "${firstTask}"${taskCount > 1 ? ` +${taskCount - 1}` : ''}`;
+    }
+
+    const target = dayjs().hour(8).minute(0).second(0);
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
-      timestamp: dayjs()
-        .hour(8)
-        .minute(0)
-        .second(0)
-        .add(dayjs().hour() >= 8 ? 1 : 0, 'day')
-        .valueOf(),
+      timestamp: target.isAfter(dayjs()) ? target.valueOf() : target.add(1, 'day').valueOf(),
       repeatFrequency: RepeatFrequency.DAILY,
     };
 
@@ -428,7 +627,7 @@ class NotificationService {
       {
         id: 'daily_morning_recap',
         title: '🌅 Programme du jour',
-        body: 'Chargement de tes tâches...',
+        body,
         android: {
           channelId: CHANNELS.RECAP.id,
           smallIcon: 'ic_notification',
@@ -442,26 +641,43 @@ class NotificationService {
 
   // Rappel soir — chaque jour à 20h00
   private async scheduleDailyEveningReminder(): Promise<void> {
+    const today = dayjs().format('YYYY-MM-DD');
+    const { data: remaining } = await supabase
+      .from('tasks')
+      .select('title')
+      .eq('household_id', this.householdId!)
+      .eq('due_date', today)
+      .is('completed_at', null)
+      .order('created_at', { ascending: true })
+      .limit(5);
+
+    const count = remaining?.length ?? 0;
+    const firstTitle = remaining?.[0]?.title ?? '';
+
+    let body: string;
+    if (count === 0) {
+      body = 'Toutes les tâches du jour sont terminées — bravo ! 🎉';
+    } else {
+      body = `${count} tâche${count > 1 ? 's' : ''} non terminée${count > 1 ? 's' : ''}`;
+      if (firstTitle) body += `\nDont : "${firstTitle}"${count > 1 ? ` +${count - 1}` : ''}`;
+    }
+
+    const target = dayjs().hour(20).minute(0).second(0);
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
-      timestamp: dayjs()
-        .hour(20)
-        .minute(0)
-        .second(0)
-        .add(dayjs().hour() >= 20 ? 1 : 0, 'day')
-        .valueOf(),
+      timestamp: target.isAfter(dayjs()) ? target.valueOf() : target.add(1, 'day').valueOf(),
       repeatFrequency: RepeatFrequency.DAILY,
     };
 
     await notifee.createTriggerNotification(
       {
         id: 'daily_evening_reminder',
-        title: '🌙 Fin de journée',
-        body: 'Vérification des tâches...',
+        title: count === 0 ? '🌙 Bravo !' : `🌙 ${count} tâche${count > 1 ? 's' : ''} restante${count > 1 ? 's' : ''}`,
+        body,
         android: {
           channelId: CHANNELS.TASKS.id,
           smallIcon: 'ic_notification',
-          color: '#FF8C00',
+          color: count === 0 ? '#34D399' : '#FF8C00',
         },
         data: { type: 'TRIGGER_EVENING_REMINDER' },
       },
@@ -471,6 +687,27 @@ class NotificationService {
 
   // Bilan hebdo — dimanche à 19h00
   private async scheduleWeeklyRecap(): Promise<void> {
+    const weekStart = dayjs().startOf('week').toISOString();
+    const now = dayjs().toISOString();
+
+    const { count: completedTasks } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', this.householdId!)
+      .gte('completed_at', weekStart)
+      .lte('completed_at', now);
+
+    const { count: eventCount } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', this.householdId!)
+      .gte('start_at', weekStart)
+      .lte('start_at', now);
+
+    const ct = completedTasks ?? 0;
+    const ec = eventCount ?? 0;
+    const body = `${ct} tâche${ct > 1 ? 's' : ''} faite${ct > 1 ? 's' : ''} · ${ec} événement${ec > 1 ? 's' : ''}`;
+
     const nextSunday = dayjs().day(7).hour(19).minute(0).second(0);
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
@@ -482,7 +719,7 @@ class NotificationService {
       {
         id: 'weekly_recap',
         title: '📊 Bilan de la semaine',
-        body: 'Calcul en cours...',
+        body,
         android: {
           channelId: CHANNELS.RECAP.id,
           smallIcon: 'ic_notification',
@@ -496,6 +733,31 @@ class NotificationService {
 
   // Stats mensuelles — 1er du mois à 9h00
   private async scheduleMonthlyStats(): Promise<void> {
+    const monthStart = dayjs().startOf('month').toISOString();
+    const now = dayjs().toISOString();
+
+    const { count: totalTasks } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', this.householdId!)
+      .gte('created_at', monthStart);
+
+    const { count: completedTasks } = await supabase
+      .from('tasks')
+      .select('*', { count: 'exact', head: true })
+      .eq('household_id', this.householdId!)
+      .gte('completed_at', monthStart)
+      .lte('completed_at', now);
+
+    const total = totalTasks ?? 0;
+    const completed = completedTasks ?? 0;
+    const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const monthName = dayjs().format('MMMM');
+
+    const body = total === 0
+      ? `Aucune tâche ce mois de ${monthName}`
+      : `${total} tâche${total > 1 ? 's' : ''} · ${rate}% complétée${completed > 1 ? 's' : ''}`;
+
     const firstNextMonth = dayjs()
       .add(1, 'month')
       .date(1)
@@ -510,8 +772,8 @@ class NotificationService {
     await notifee.createTriggerNotification(
       {
         id: 'monthly_stats',
-        title: '🎯 Bilan du mois',
-        body: 'Chargement...',
+        title: `🎯 Bilan du mois de ${monthName}`,
+        body,
         android: {
           channelId: CHANNELS.RECAP.id,
           smallIcon: 'ic_notification',
@@ -525,25 +787,65 @@ class NotificationService {
 
   // Check DLC — chaque jour à 9h30
   private async scheduleDailyFoodCheck(): Promise<void> {
+    const today = dayjs().format('YYYY-MM-DD');
+    const tomorrow = dayjs().add(1, 'day').format('YYYY-MM-DD');
+
+    const { data: expiringToday } = await supabase
+      .from('food_items')
+      .select('name')
+      .eq('household_id', this.householdId!)
+      .eq('expiry_date', today)
+      .is('consumed_at', null)
+      .limit(5);
+
+    const { data: expiringTomorrow } = await supabase
+      .from('food_items')
+      .select('name')
+      .eq('household_id', this.householdId!)
+      .eq('expiry_date', tomorrow)
+      .is('consumed_at', null)
+      .limit(5);
+
+    const todayCount = expiringToday?.length ?? 0;
+    const tomorrowCount = expiringTomorrow?.length ?? 0;
+
+    let body: string;
+    let title: string;
+    if (todayCount === 0 && tomorrowCount === 0) {
+      title = '🥑 Vérification DLC';
+      body = 'Rien n\'expire bientôt — tout va bien ! ✅';
+    } else {
+      const parts: string[] = [];
+      if (todayCount > 0) {
+        const names = expiringToday!.map(f => f.name).join(', ');
+        parts.push(`⚠️ Aujourd'hui : ${names}`);
+      }
+      if (tomorrowCount > 0) {
+        const names = expiringTomorrow!.map(f => f.name).join(', ');
+        parts.push(`📅 Demain : ${names}`);
+      }
+      body = parts.join('\n');
+      title = todayCount > 0
+        ? `⚠️ ${todayCount} aliment${todayCount > 1 ? 's' : ''} expire${todayCount > 1 ? 'nt' : ''} aujourd'hui`
+        : `🥑 ${tomorrowCount} aliment${tomorrowCount > 1 ? 's' : ''} expire${tomorrowCount > 1 ? 'nt' : ''} demain`;
+    }
+
+    const target = dayjs().hour(9).minute(30).second(0);
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
-      timestamp: dayjs()
-        .hour(9)
-        .minute(30)
-        .second(0)
-        .add(dayjs().hour() >= 9 ? 1 : 0, 'day')
-        .valueOf(),
+      timestamp: target.isAfter(dayjs()) ? target.valueOf() : target.add(1, 'day').valueOf(),
       repeatFrequency: RepeatFrequency.DAILY,
     };
 
     await notifee.createTriggerNotification(
       {
         id: 'daily_food_check',
-        title: '🥑 Vérification DLC',
-        body: 'Vérification...',
+        title,
+        body,
         android: {
           channelId: CHANNELS.FOOD.id,
           smallIcon: 'ic_notification',
+          color: todayCount > 0 ? '#FF4444' : '#F5A623',
         },
         data: { type: 'TRIGGER_FOOD_CHECK' },
       },
@@ -552,6 +854,20 @@ class NotificationService {
   }
 
   // ── PLANIFICATION PAR ENTITÉ ──────────
+
+  private async rescheduleExistingEventReminders(): Promise<void> {
+    const now = dayjs().toISOString();
+    const { data: futureEvents } = await supabase
+      .from('events')
+      .select('id, title, start_at, category, location')
+      .eq('household_id', this.householdId!)
+      .gt('start_at', now);
+
+    if (!futureEvents) return;
+    for (const ev of futureEvents) {
+      await this.scheduleEventReminders(ev as Record<string, string>);
+    }
+  }
 
   async scheduleEventReminders(event: Record<string, string>): Promise<void> {
     const startAt = dayjs(event.start_at);
@@ -779,14 +1095,31 @@ class NotificationService {
 
   // ── HELPERS ─────────────────────────
 
-  private async getMemberName(userId: string): Promise<string> {
-    const { data } = await supabase
+  private isCurrentUser(id: string | null): boolean {
+    if (!id) return false;
+    return id === this.userId || id === this.currentMemberId;
+  }
+
+  private async getMemberName(id: string | null): Promise<string> {
+    if (!id) return "Quelqu'un";
+
+    // Try by user_id first
+    const { data: byUserId } = await supabase
       .from('household_members')
       .select('display_name')
-      .eq('user_id', userId)
+      .eq('user_id', id)
       .eq('household_id', this.householdId!)
-      .single();
-    return (data as { display_name: string } | null)?.display_name ?? "Quelqu'un";
+      .maybeSingle();
+    if (byUserId?.display_name) return byUserId.display_name;
+
+    // Try by member id
+    const { data: byMemberId } = await supabase
+      .from('household_members')
+      .select('display_name')
+      .eq('id', id)
+      .eq('household_id', this.householdId!)
+      .maybeSingle();
+    return byMemberId?.display_name ?? "Quelqu'un";
   }
 }
 

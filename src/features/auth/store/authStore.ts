@@ -201,21 +201,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { user } = get();
     if (!user) return;
 
-    // Chercher le membership
+    // Étape 1 : récupérer le membership de l'utilisateur
     const { data: memberData, error: memberError } = await supabase
       .from('household_members')
-      .select('*, households(*)')
+      .select('*')
       .eq('user_id', user.id)
       .limit(1)
       .single();
 
     if (memberError || !memberData) {
+      console.warn('[loadHousehold] pas de membership:', memberError?.message);
       set({ hasHousehold: false, hasProfile: false });
       return;
     }
 
-    const household = (memberData as Record<string, unknown>)
-      .households as Household;
+    // Étape 2 : récupérer le foyer séparément (évite les erreurs de FK join)
+    const { data: householdData, error: householdError } = await supabase
+      .from('households')
+      .select('*')
+      .eq('id', memberData.household_id)
+      .single();
+
+    if (householdError || !householdData) {
+      console.warn('[loadHousehold] foyer introuvable:', householdError?.message);
+      set({ hasHousehold: false, hasProfile: false });
+      return;
+    }
+
+    const household = householdData as Household;
     const member: HouseholdMember = {
       id: memberData.id,
       household_id: memberData.household_id,
@@ -227,7 +240,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       joined_at: memberData.joined_at,
     };
 
-    // Charger tous les membres du foyer
+    // Étape 3 : charger tous les membres du foyer
     const { data: allMembers } = await supabase
       .from('household_members')
       .select('*')
@@ -247,7 +260,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!user) return { error: 'Non authentifié' };
 
     // Utiliser la fonction RPC qui contourne le RLS
-    const { data, error } = await supabase.rpc('create_household_with_member', {
+    const { error } = await supabase.rpc('create_household_with_member', {
       p_name: name,
     });
 
@@ -262,7 +275,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!user) return { error: 'Non authentifié' };
 
     // Appel RPC SECURITY DEFINER (contourne la RLS)
-    const { data: householdId, error: rpcError } = await supabase
+    const { error: rpcError } = await supabase
       .rpc('join_household_by_code', { p_invite_code: inviteCode.trim() });
 
     if (rpcError) {

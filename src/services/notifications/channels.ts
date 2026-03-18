@@ -45,6 +45,17 @@ export const CHANNELS = {
     vibration: false,
   },
 
+  CHAT: {
+    id: 'majordhome_chat',
+    name: 'Messages',
+    description: 'Nouveaux messages du chat',
+    importance: AndroidImportance.HIGH,
+    sound: 'default',
+    vibration: true,
+    lights: true,
+    lightColor: '#4ECDC4',
+  },
+
   HOUSEHOLD: {
     id: 'majordhome_household',
     name: 'Foyer',
@@ -61,6 +72,17 @@ export const CHANNELS = {
     importance: AndroidImportance.LOW,
     sound: 'default',
     vibration: false,
+  },
+
+  BUDGET: {
+    id: 'majordhome_budget',
+    name: 'Budget & Dépenses',
+    description: 'Nouvelles dépenses et rappels de solde',
+    importance: AndroidImportance.DEFAULT,
+    sound: 'default',
+    vibration: true,
+    lights: true,
+    lightColor: '#F5A623',
   },
 } as const;
 

@@ -1,17 +1,35 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, Platform } from 'react-native';
+import { StyleSheet, View, Text, Platform, Pressable } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from './types';
+import { createStackNavigator } from '@react-navigation/stack';
+import type { MainTabParamList, MoreStackParamList } from './types';
 
-import { HomeScreen } from '@features/calendar/screens/HomeScreen';
+import { HomeScreen } from '@features/home/screens/HomeScreen';
 import { TaskListScreen } from '@features/tasks/screens/TaskListScreen';
+import { ChatScreen } from '@features/chat/screens/ChatScreen';
+import { ShoppingListScreen } from '@features/shopping/screens/ShoppingListScreen';
+
+// ─── More stack screens ──────────────────────────────────
+import { MoreScreen } from '@features/more/screens/MoreScreen';
 import { EventListScreen } from '@features/events/screens/EventListScreen';
 import { FoodTrackerScreen } from '@features/food/screens/FoodTrackerScreen';
-import { ShoppingListScreen } from '@features/shopping/screens/ShoppingListScreen';
+import { BudgetScreen } from '@features/budget/screens/BudgetScreen';
+import { NotesScreen } from '@features/notes/screens/NotesScreen';
+import { NoteEditorScreen } from '@features/notes/screens/NoteEditorScreen';
 import { StatsScreen } from '@features/stats/screens/StatsScreen';
+import { RewardsScreen } from '@features/rewards/screens/RewardsScreen';
 import { SettingsScreen } from '@features/settings/screens/SettingsScreen';
+import { MealPlanScreen } from '@features/meals/screens/MealPlanScreen';
+import { ChoresScreen } from '@features/chores/screens/ChoresScreen';
+import { PollsScreen } from '@features/polls/screens/PollsScreen';
+import { DocumentsScreen } from '@features/documents/screens/DocumentsScreen';
+import { DocumentViewerScreen } from '@features/documents/screens/DocumentViewerScreen';
+import { WeatherScreen } from '@features/weather/screens/WeatherScreen';
+import { SharedTimersScreen } from '@features/timers/screens/SharedTimersScreen';
+import { MoodBoardScreen } from '@features/mood/screens/MoodBoardScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const MoreStack = createStackNavigator<MoreStackParamList>();
 
 // ─── Warm chocolate palette ──────────────────────────────
 const C = {
@@ -31,11 +49,9 @@ interface TabDef {
 const TABS: Record<keyof MainTabParamList, TabDef> = {
   Calendar: { icon: '\u{1F4C5}', label: 'Accueil' },
   Tasks: { icon: '\u2705', label: 'Tâches' },
-  Events: { icon: '\u{1F389}', label: 'Événements' },
-  Food: { icon: '\u{1F951}', label: 'Aliments' },
+  Chat: { icon: '\u{1F4AC}', label: 'Chat' },
   Shopping: { icon: '\u{1F6D2}', label: 'Courses' },
-  Stats: { icon: '\u{1F4CA}', label: 'Stats' },
-  Settings: { icon: '\u2699\uFE0F', label: 'Réglages' },
+  More: { icon: '\u2630', label: 'Plus' },
 };
 
 const TabIcon: React.FC<{ name: keyof MainTabParamList; focused: boolean }> = ({ name, focused }) => (
@@ -50,6 +66,53 @@ const TabIcon: React.FC<{ name: keyof MainTabParamList; focused: boolean }> = ({
     </View>
     {focused && <View style={styles.activeDot} />}
   </View>
+);
+
+// ─── More Stack Navigator ────────────────────────────────
+const BackBtn: React.FC<{ onPress: () => void }> = ({ onPress }) => (
+  <Pressable
+    onPress={onPress}
+    hitSlop={12}
+    style={{
+      width: 34, height: 34, borderRadius: 11,
+      backgroundColor: 'rgba(245,166,35,0.15)',
+      borderWidth: 1, borderColor: 'rgba(245,166,35,0.22)',
+      alignItems: 'center', justifyContent: 'center',
+      marginLeft: 8,
+    }}
+  >
+    <Text style={{ fontSize: 22, color: '#F5A623', lineHeight: 24, marginLeft: -2 }}>‹</Text>
+  </Pressable>
+);
+
+const MoreStackNavigator: React.FC = () => (
+  <MoreStack.Navigator
+    screenOptions={({ navigation }) => ({
+      headerStyle: { backgroundColor: '#1A0E00' },
+      headerShadowVisible: false,
+      headerTitle: '',
+      headerBackVisible: false,
+      headerLeft: () => <BackBtn onPress={() => navigation.goBack()} />,
+    })}
+  >
+    <MoreStack.Screen name="MoreHome" component={MoreScreen} options={{ headerShown: false }} />
+    <MoreStack.Screen name="Events" component={EventListScreen} />
+    <MoreStack.Screen name="Food" component={FoodTrackerScreen} />
+    <MoreStack.Screen name="Budget" component={BudgetScreen} options={{ headerShown: false }} />
+    <MoreStack.Screen name="Notes" component={NotesScreen} options={{ headerShown: false }} />
+    <MoreStack.Screen name="NoteEditor" component={NoteEditorScreen} options={{ headerShown: false }} />
+    <MoreStack.Screen name="Stats" component={StatsScreen} />
+    <MoreStack.Screen name="Rewards" component={RewardsScreen} />
+    <MoreStack.Screen name="Settings" component={SettingsScreen} />
+    <MoreStack.Screen name="MealPlan" component={MealPlanScreen} />
+    <MoreStack.Screen name="Chores" component={ChoresScreen} />
+    <MoreStack.Screen name="Polls" component={PollsScreen} />
+    <MoreStack.Screen name="Documents" component={DocumentsScreen} />
+    <MoreStack.Screen name="DocumentViewer" component={DocumentViewerScreen} options={{ headerShown: false }} />
+    <MoreStack.Screen name="Weather" component={WeatherScreen} />
+    <MoreStack.Screen name="Timers" component={SharedTimersScreen} />
+    <MoreStack.Screen name="Mood" component={MoodBoardScreen} />
+  </MoreStack.Navigator>
 );
 
 export const MainTabNavigator: React.FC = () => {
@@ -76,7 +139,7 @@ export const MainTabNavigator: React.FC = () => {
     tabBarInactiveTintColor: C.creamMuted,
     tabBarLabelStyle: {
       fontFamily: 'DMSans-Medium',
-      fontSize: 9,
+      fontSize: 10,
       letterSpacing: 0.3,
       marginTop: -2,
     },
@@ -104,19 +167,11 @@ export const MainTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Events"
-        component={EventListScreen}
+        name="Chat"
+        component={ChatScreen}
         options={{
-          tabBarLabel: TABS.Events.label,
-          tabBarIcon: ({ focused }) => <TabIcon name="Events" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Food"
-        component={FoodTrackerScreen}
-        options={{
-          tabBarLabel: TABS.Food.label,
-          tabBarIcon: ({ focused }) => <TabIcon name="Food" focused={focused} />,
+          tabBarLabel: TABS.Chat.label,
+          tabBarIcon: ({ focused }) => <TabIcon name="Chat" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -128,19 +183,11 @@ export const MainTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Stats"
-        component={StatsScreen}
+        name="More"
+        component={MoreStackNavigator}
         options={{
-          tabBarLabel: TABS.Stats.label,
-          tabBarIcon: ({ focused }) => <TabIcon name="Stats" focused={focused} />,
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarLabel: TABS.Settings.label,
-          tabBarIcon: ({ focused }) => <TabIcon name="Settings" focused={focused} />,
+          tabBarLabel: TABS.More.label,
+          tabBarIcon: ({ focused }) => <TabIcon name="More" focused={focused} />,
         }}
       />
     </Tab.Navigator>

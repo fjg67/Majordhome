@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  View, Text, ScrollView, Pressable, Dimensions, StatusBar, Platform,
+  View, Text, ScrollView, Pressable, Dimensions, StatusBar,
 } from 'react-native';
 import Animated, {
   FadeIn, FadeInDown, FadeInUp, FadeOut,
@@ -429,7 +429,7 @@ export const StatsScreen: React.FC = () => {
 
       {/* ══════ HEADER ══════ */}
       <Animated.View entering={FadeInDown.duration(400)} style={{
-        paddingTop: Platform.OS === 'ios' ? 56 : 44, paddingHorizontal: 20, paddingBottom: 6,
+        paddingTop: 8, paddingHorizontal: 20, paddingBottom: 6,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Canvas style={{ width: 28, height: 28 }}>

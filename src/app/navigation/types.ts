@@ -11,15 +11,34 @@ export type RootStackParamList = {
   Main: NavigatorScreenParams<MainTabParamList>;
 };
 
+// ─── More Stack (inside "Plus" tab) ─────────────────────
+export type MoreStackParamList = {
+  MoreHome: undefined;
+  Events: undefined;
+  Food: undefined;
+  Budget: undefined;
+  Notes: undefined;
+  NoteEditor: { noteId?: string; category?: string } | undefined;
+  Stats: undefined;
+  Rewards: undefined;
+  Settings: undefined;
+  MealPlan: undefined;
+  Chores: undefined;
+  Polls: undefined;
+  Documents: undefined;
+  DocumentViewer: { docId: string } | undefined;
+  Weather: undefined;
+  Timers: undefined;
+  Mood: undefined;
+};
+
 // ─── Main Bottom Tabs ────────────────────────────────────
 export type MainTabParamList = {
   Calendar: undefined;
   Tasks: undefined;
-  Events: undefined;
-  Food: undefined;
+  Chat: undefined;
   Shopping: undefined;
-  Stats: undefined;
-  Settings: undefined;
+  More: NavigatorScreenParams<MoreStackParamList>;
 };
 
 // Typage helper pour les écrans

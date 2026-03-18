@@ -686,7 +686,7 @@ export const FoodTrackerScreen: React.FC = () => {
       <StatusBar barStyle="light-content" backgroundColor={C.bgDeep} />
 
       <ScrollView showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 52, paddingBottom: 120 }}>
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 }}>
 
         {/* ─── HEADER ─── */}
         <Animated.View entering={FadeInDown.delay(0).duration(500).springify()} style={{

@@ -25,11 +25,45 @@ export type NotificationType =
   | 'SHOPPING_ITEM_CHECKED'
   | 'SHOPPING_LIST_COMPLETE'
   | 'SHOPPING_DLC_SUGGESTION'
+  // Chat
+  | 'CHAT_NEW_MESSAGE'
+  | 'CHAT_IMAGE'
+  | 'CHAT_AUDIO'
   // Foyer
   | 'MEMBER_JOINED'
   | 'MEMBER_LEFT'
   | 'HOUSEHOLD_WEEKLY_RECAP'
   | 'HOUSEHOLD_MONTHLY_STATS'
+  // Budget
+  | 'BUDGET_EXPENSE_ADDED'
+  | 'BUDGET_BALANCE_REMINDER'
+  | 'BUDGET_SETTLED'
+  // Notes
+  | 'NOTE_CREATED'
+  | 'NOTE_EDITED'
+  // Corvées
+  | 'CHORE_REMINDER'
+  | 'CHORE_OVERDUE'
+  | 'CHORE_NEXT_TURN'
+  // Sondages
+  | 'POLL_CREATED'
+  | 'POLL_VOTE'
+  | 'POLL_COMPLETE'
+  | 'POLL_EXPIRING'
+  // Humeurs
+  | 'MOOD_REMINDER'
+  | 'MOOD_SUPPORT'
+  // Récompenses
+  | 'LEVEL_UP'
+  | 'BADGE_UNLOCK'
+  // Minuteurs
+  | 'TIMER_FINISHED'
+  | 'TIMER_STARTED'
+  // Documents
+  | 'DOC_UPLOADED'
+  | 'DOC_EXPIRY_30D'
+  | 'DOC_EXPIRY_7D'
+  | 'DOC_EXPIRED'
   // Système
   | 'APP_UPDATE_AVAILABLE';
 

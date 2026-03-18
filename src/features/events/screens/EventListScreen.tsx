@@ -14,6 +14,7 @@ import {
 } from '@shopify/react-native-skia';
 import { useAuthStore } from '@features/auth/store/authStore';
 import { supabase, subscribeToTable } from '@services/supabase';
+import { notificationService } from '@services/notifications';
 import type { CalendarEvent, EventCategory, RecurrenceType } from '@appTypes/index';
 
 const { width: SW } = Dimensions.get('window');
@@ -315,6 +316,15 @@ export const EventListScreen: React.FC = () => {
       location: mLocation.trim() || null,
       assigned_members: mAssignedMembers.length > 0 ? mAssignedMembers : [],
     }).eq('id', editingEvent.id);
+    // Replanifier les rappels de l'événement
+    await notificationService.cancelEventReminders(editingEvent.id);
+    await notificationService.scheduleEventReminders({
+      id: editingEvent.id,
+      title: mTitle.trim(),
+      start_at: startDate.toISOString(),
+      category: mCategory,
+      location: mLocation.trim() || '',
+    });
     closeModal();
     load();
   }, [editingEvent, mTitle, mDesc, mCategory, mLocation, mAllDay, mRecurrence, mAssignedMembers, mStartH, mStartM, mEndH, mEndM, load]);
@@ -322,6 +332,7 @@ export const EventListScreen: React.FC = () => {
   // ─── DELETE EVENT ───
   const confirmDelete = useCallback(async () => {
     if (!deleteConfirm) return;
+    await notificationService.cancelEventReminders(deleteConfirm.id);
     await supabase.from('events').delete().eq('id', deleteConfirm.id);
     setDeleteConfirm(null);
     load();
@@ -342,7 +353,7 @@ export const EventListScreen: React.FC = () => {
       <Animated.View entering={FadeInDown.duration(500).springify()}>
         <LinearGradient
           colors={[C.bgDeep, C.bgMid]}
-          style={{ paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14 }}
+          style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 14 }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             {/* Calendar icon Skia */}

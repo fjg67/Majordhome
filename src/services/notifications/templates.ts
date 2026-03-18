@@ -306,6 +306,43 @@ export const NOTIFICATION_TEMPLATES: Record<
   }),
 
   // ══════════════════════════════════
+  // CHAT
+  // ══════════════════════════════════
+
+  CHAT_NEW_MESSAGE: (p) => ({
+    title: `💬 ${p.triggeredByName}`,
+    body: `${p.data?.content}`,
+    channel: CHANNELS.CHAT.id,
+    android: {
+      color: '#4ECDC4',
+      importance: AndroidImportance.HIGH,
+      actions: [
+        { title: '💬 Ouvrir', pressAction: { id: 'open_chat' } },
+      ],
+    },
+  }),
+
+  CHAT_IMAGE: (p) => ({
+    title: `📷 ${p.triggeredByName}`,
+    body: p.data?.caption ? `${p.data.caption}` : 'A envoyé une photo',
+    channel: CHANNELS.CHAT.id,
+    android: {
+      color: '#4ECDC4',
+      importance: AndroidImportance.HIGH,
+    },
+  }),
+
+  CHAT_AUDIO: (p) => ({
+    title: `🎤 ${p.triggeredByName}`,
+    body: `Message vocal · ${p.data?.duration ?? ''}s`,
+    channel: CHANNELS.CHAT.id,
+    android: {
+      color: '#4ECDC4',
+      importance: AndroidImportance.HIGH,
+    },
+  }),
+
+  // ══════════════════════════════════
   // FOYER
   // ══════════════════════════════════
 
@@ -350,6 +387,322 @@ export const NOTIFICATION_TEMPLATES: Record<
     body: `${p.data?.totalTasks} tâches · ${p.data?.completionRate}% de complétion · ${p.data?.wastedFood} gaspillés`,
     channel: CHANNELS.RECAP.id,
     android: { color: '#F5A623' },
+  }),
+
+  // ══════════════════════════════════
+  // BUDGET
+  // ══════════════════════════════════
+
+  BUDGET_EXPENSE_ADDED: (p) => ({
+    title: `💸 ${p.triggeredByName} a ajouté une dépense`,
+    body: `"${p.data?.expenseTitle}" — ${p.data?.amount}€ · Ta part : ${p.data?.share}€`,
+    channel: CHANNELS.BUDGET.id,
+    android: {
+      color: '#F5A623',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `${p.triggeredByName} a enregistré une nouvelle dépense :\n\n📝 ${p.data?.expenseTitle}\n💰 Total : ${p.data?.amount}€\n👥 Ta part : ${p.data?.share}€\n🗂️ Catégorie : ${p.data?.category}`,
+      },
+      actions: [
+        { title: '💰 Voir le budget', pressAction: { id: 'open_budget' } },
+      ],
+    },
+  }),
+
+  BUDGET_BALANCE_REMINDER: (p) => ({
+    title: `⚖️ Tu dois ${p.data?.amount}€ au foyer`,
+    body: p.data?.creditorName
+      ? `${p.data.creditorName} t'a avancé de l'argent ce mois-ci`
+      : 'Tu as un solde négatif dans le budget partagé',
+    channel: CHANNELS.BUDGET.id,
+    android: {
+      color: '#FF8C00',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `Ton solde du mois :\n\n💸 Tu dois : ${p.data?.amount}€\n\nRègle ça avec tes colocataires pour équilibrer les comptes.`,
+      },
+      actions: [
+        { title: '💰 Voir les soldes', pressAction: { id: 'open_budget' } },
+      ],
+      importance: AndroidImportance.DEFAULT,
+    },
+  }),
+
+  BUDGET_SETTLED: (p) => ({
+    title: '✅ Comptes soldés !',
+    body: `${p.data?.memberName ?? 'Le foyer'} a réglé ses dettes — tout est à zéro 🎉`,
+    channel: CHANNELS.BUDGET.id,
+    android: {
+      color: '#34D399',
+      importance: AndroidImportance.DEFAULT,
+    },
+  }),
+
+  // ══════════════════════════════════
+  // NOTES
+  // ══════════════════════════════════
+
+  // ══════════════════════════════════
+  // CORVÉES
+  // ══════════════════════════════════
+
+  CHORE_REMINDER: (p) => ({
+    title: `🔄 Corvée du jour : ${p.data?.choreTitle}`,
+    body: `C'est ton tour ! ~${p.data?.durationMin} min estimées`,
+    channel: CHANNELS.TASKS.id,
+    android: {
+      color: (p.data?.catColor as string) || '#F5A623',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `C'est ton tour pour la corvée :\n\n"${p.data?.choreTitle}"\n⏱ Durée estimée : ~${p.data?.durationMin} min`,
+      },
+      actions: [
+        { title: '✓ Fait !',     pressAction: { id: 'mark_chore_done' } },
+        { title: '⏭️ Passer',    pressAction: { id: 'skip_chore' } },
+      ],
+    },
+  }),
+
+  CHORE_OVERDUE: (p) => ({
+    title: '⚠️ Corvée en retard',
+    body: `"${p.data?.choreTitle}" n'a pas été faite`,
+    channel: CHANNELS.TASKS.id,
+    android: {
+      color: '#FF4444',
+      importance: AndroidImportance.HIGH,
+      actions: [
+        { title: '✓ Faire maintenant', pressAction: { id: 'mark_chore_done' } },
+      ],
+    },
+  }),
+
+  CHORE_NEXT_TURN: (p) => ({
+    title: '🔄 À ton tour !',
+    body: `${p.triggeredByName} a fait "${p.data?.choreTitle}" · C'est maintenant ton tour`,
+    channel: CHANNELS.TASKS.id,
+    android: {
+      color: (p.data?.catColor as string) || '#F5A623',
+      actions: [
+        { title: '✓ Je m\'en occupe', pressAction: { id: 'mark_chore_done' } },
+      ],
+    },
+  }),
+
+  // ══════════════════════════════════
+  // SONDAGES
+  // ══════════════════════════════════
+
+  POLL_CREATED: (p) => ({
+    title: `🗳️ ${p.triggeredByName ?? 'Quelqu\'un'} a créé un sondage`,
+    body: `"${p.data?.question ?? ''}"`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#F5A623',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `${p.triggeredByName} veut votre avis :\n\n"${p.data?.question}"\n\nOptions : ${p.data?.optionsPreview ?? ''}`,
+      },
+      actions: [
+        { title: '🗳️ Voter', pressAction: { id: 'open_poll' } },
+      ],
+    },
+  }),
+
+  POLL_VOTE: (p) => ({
+    title: `✓ ${p.triggeredByName ?? 'Quelqu\'un'} a voté`,
+    body: `"${p.data?.question ?? ''}" · ${p.data?.votedCount ?? '?'}/${p.data?.totalMembers ?? '?'} ont voté`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: { color: '#34D399' },
+  }),
+
+  POLL_COMPLETE: (_p) => ({
+    title: `🎉 Tout le monde a voté !`,
+    body: `"${_p.data?.question ?? ''}" · Résultat : "${_p.data?.winnerOption ?? ''}"`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: { color: '#FFD700', importance: AndroidImportance.HIGH },
+  }),
+
+  POLL_EXPIRING: (p) => ({
+    title: `⏰ Sondage expire bientôt`,
+    body: `"${p.data?.question ?? ''}" — il reste ${p.data?.timeLeft ?? '?'} pour voter`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#FF8C00',
+      actions: [
+        { title: '🗳️ Voter vite !', pressAction: { id: 'open_poll' } },
+      ],
+    },
+  }),
+
+  // ══════════════════════════════════
+  // HUMEURS
+  // ══════════════════════════════════
+
+  MOOD_REMINDER: (_p) => ({
+    title: `😊 Comment s'est passée ta journée ?`,
+    body: `N'oublie pas de renseigner ton humeur du jour !`,
+    channel: CHANNELS.RECAP.id,
+    android: {
+      color: '#F5A623',
+      actions: [
+        { title: '😄 Super',  pressAction: { id: 'mood_super'  } },
+        { title: '😊 Bien',   pressAction: { id: 'mood_bien'   } },
+        { title: '😐 Neutre', pressAction: { id: 'mood_neutre' } },
+      ],
+    },
+  }),
+
+  MOOD_SUPPORT: (p) => ({
+    title: `💙 ${p.triggeredByName ?? 'Quelqu\'un'} n'est pas au top`,
+    body: `${p.triggeredByName ?? 'Un membre'} se sent ${p.data?.moodLabel ?? 'pas bien'} aujourd'hui — un petit message ?`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#A78BFA',
+      actions: [
+        { title: '💬 Lui écrire', pressAction: { id: 'open_chat' } },
+      ],
+    },
+  }),
+
+  // ══════════════════════════════════
+  // RÉCOMPENSES
+  // ══════════════════════════════════
+
+  LEVEL_UP: (p) => ({
+    title: `🎉 Tu as atteint un nouveau niveau !`,
+    body: `Tu es maintenant ${p.data?.label} (Niv. ${p.data?.level}) — continue !`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: p.data?.color ?? '#FFD700',
+      importance: AndroidImportance.HIGH,
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `Félicitations ! Tu es passé au niveau ${p.data?.level} : ${p.data?.label} ${p.data?.emoji}`,
+      },
+      actions: [
+        { title: '🏆 Voir', pressAction: { id: 'open_rewards' } },
+      ],
+    },
+  }),
+
+  BADGE_UNLOCK: (p) => ({
+    title: `🎖️ Badge débloqué : ${p.data?.name}`,
+    body: `${p.data?.emoji} "${p.data?.name}" +${p.data?.xpReward} XP`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: p.data?.rarityColor ?? '#F5A623',
+      actions: [
+        { title: '🏆 Voir', pressAction: { id: 'open_rewards' } },
+      ],
+    },
+  }),
+
+  // ══════════════════════════════════
+  // MINUTEURS
+  // ══════════════════════════════════
+
+  TIMER_FINISHED: (p) => ({
+    title: '⏰ Minuteur terminé !',
+    body: `"${p.data?.title}" est terminé`,
+    channel: CHANNELS.TASKS.id,
+    android: {
+      color: '#FF4444',
+      importance: AndroidImportance.HIGH,
+      actions: [
+        { title: '↩ Relancer', pressAction: { id: 'restart_timer' } },
+        { title: '✓ OK',       pressAction: { id: 'dismiss'        } },
+      ],
+    },
+  }),
+
+  TIMER_STARTED: (p) => ({
+    title: `▶ ${p.triggeredByName} a démarré un minuteur`,
+    body: `"${p.data?.title}" · ${p.data?.duration}`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: { color: '#34D399' },
+  }),
+
+  // ══════════════════════════════════
+  // DOCUMENTS
+  // ══════════════════════════════════
+
+  DOC_UPLOADED: (p) => ({
+    title: `📁 ${p.triggeredByName} a ajouté un document`,
+    body: `"${p.data?.title}" · ${p.data?.category} · ${p.data?.size}`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#F5A623',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `${p.triggeredByName} a partagé un nouveau document :\n\n"${p.data?.title}"\n📂 ${p.data?.category} · ${p.data?.size}`,
+      },
+      actions: [
+        { title: '👀 Voir', pressAction: { id: 'open_documents' } },
+      ],
+    },
+  }),
+
+  DOC_EXPIRY_30D: (p) => ({
+    title: '📋 Document expire dans 30 jours',
+    body: `"${p.data?.title}" expire le ${p.data?.expiryDate}`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#FF8C00',
+      actions: [
+        { title: '👀 Voir', pressAction: { id: 'open_document' } },
+      ],
+    },
+  }),
+
+  DOC_EXPIRY_7D: (p) => ({
+    title: '⚠️ Document expire dans 7 jours',
+    body: `"${p.data?.title}" — pensez à le renouveler`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#FF8C00',
+      importance: AndroidImportance.HIGH,
+      actions: [
+        { title: '👀 Voir', pressAction: { id: 'open_document' } },
+      ],
+    },
+  }),
+
+  DOC_EXPIRED: (p) => ({
+    title: '❌ Document expiré',
+    body: `"${p.data?.title}" est arrivé à expiration`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#FF4444',
+      importance: AndroidImportance.HIGH,
+    },
+  }),
+
+  NOTE_CREATED: (p) => ({
+    title: `📝 ${p.triggeredByName} a créé une note`,
+    body: `"${p.data?.title}"${p.data?.category && p.data.category !== 'memo' ? ` · ${p.data?.category}` : ''}`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: (p.data?.catColor as string) || '#F5A623',
+      style: {
+        type: AndroidStyle.BIGTEXT,
+        text: `${p.triggeredByName} a ajouté une nouvelle note partagée :\n\n"${p.data?.title}"`,
+      },
+      actions: [
+        { title: '👀 Voir', pressAction: { id: 'open_notes' } },
+      ],
+    },
+  }),
+
+  NOTE_EDITED: (p) => ({
+    title: `✏️ ${p.triggeredByName} a modifié une note`,
+    body: `"${p.data?.title}"`,
+    channel: CHANNELS.HOUSEHOLD.id,
+    android: {
+      color: '#F5A623',
+      actions: [
+        { title: '👀 Voir', pressAction: { id: 'open_notes' } },
+      ],
+    },
   }),
 
   APP_UPDATE_AVAILABLE: (p) => ({
